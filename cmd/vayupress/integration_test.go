@@ -136,13 +136,11 @@ func newTestHarness(t *testing.T) (*httptest.Server, string) {
 	config.Load()
 
 	// Drain CachePurge's async sitemap/feed/robots writers at the end of each
-	// test. Registered before the temp-dir cleanup (which t.TempDir queued
-	// earlier) so it runs first (LIFO): the fire-and-forget writers finish before
-	// the temp dir is removed AND before the next test's config.Load mutates the
-	// process-global config.Cfg — closing a data race the -race detector would
-	// otherwise flag across the integration suite.
-	t.Cleanup(render.WaitForPurges)
-
+	// test. Registered AFTER the pool-close cleanup below so it runs FIRST at
+	// teardown (LIFO): the fire-and-forget writers finish before the pools are
+	// closed — a live sitemap goroutine reading dbpkg.Reader() while ClosePools
+	// nils the handle is a data race the -race build kills — and before the
+	// next test's config.Load mutates the process-global config.Cfg.
 	if err := dbpkg.Init(); err != nil {
 		t.Fatalf("db init: %v", err)
 	}
@@ -154,6 +152,7 @@ func newTestHarness(t *testing.T) (*httptest.Server, string) {
 		dbpkg.ClosePools()
 		dbpkg.DB.Close()
 	})
+	t.Cleanup(render.WaitForPurges)
 
 	auth.InitCSRFSecret()
 

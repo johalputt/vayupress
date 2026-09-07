@@ -21,10 +21,12 @@ package main
 // Clearnet link is shown instead of a broken console.
 
 import (
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/johalputt/vayupress/internal/render"
 )
@@ -158,19 +160,45 @@ func (a *App) proxyToTorWorld(w http.ResponseWriter, r *http.Request) {
 		w.Header().Del(h)
 	}
 	target := &url.URL{Scheme: "http", Host: "127.0.0.1:" + strconv.Itoa(port)}
-	proxy := httputil.NewSingleHostReverseProxy(target)
-	baseDirector := proxy.Director
-	proxy.Director = func(req *http.Request) {
-		baseDirector(req)
-		req.Host = target.Host
-		// Authenticate as the Tor world's own admin (its distinct API key). Drop any
-		// inbound Authorization so only our injected key is honoured.
-		req.Header.Set("Authorization", "Bearer "+key)
-		req.Header.Del("X-Api-Key")
-	}
-	// Never surface a raw 502 to the operator — show the friendly "starting" page.
-	proxy.ErrorHandler = func(rw http.ResponseWriter, rq *http.Request, _ error) {
-		a.renderTorWorldUnavailable(rw, rq)
+	proxy := &httputil.ReverseProxy{
+		// Rewrite replaces the Director field, deprecated since Go 1.26
+		// (staticcheck SA1019 — flagged once the module's go directive moved
+		// to 1.26). Two Director behaviours are replicated here by hand,
+		// because Rewrite mode does neither by default:
+		//   1. Director passed the inbound Forwarded / X-Forwarded-* headers
+		//      through untouched; Rewrite strips them. The child derives the
+		//      operator's real address via internal/auth.ClientIP, so they are
+		//      re-attached and the immediate peer is appended to
+		//      X-Forwarded-For exactly as Director mode did.
+		//   2. Director left the outbound Host as the inbound value until the
+		//      wrapper overrode it; here pr.Out.Host is set to the target.
+		Rewrite: func(pr *httputil.ProxyRequest) {
+			for _, h := range []string{
+				"Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto",
+			} {
+				if vs := pr.In.Header.Values(h); len(vs) > 0 {
+					pr.Out.Header[http.CanonicalHeaderKey(h)] = vs
+				}
+			}
+			if client, _, err := net.SplitHostPort(pr.In.RemoteAddr); err == nil {
+				prior := pr.In.Header.Values("X-Forwarded-For")
+				if len(prior) > 0 {
+					client = strings.Join(prior, ", ") + ", " + client
+				}
+				pr.Out.Header.Set("X-Forwarded-For", client)
+			}
+			pr.Out.URL.Scheme = target.Scheme
+			pr.Out.URL.Host = target.Host
+			pr.Out.Host = target.Host
+			// Authenticate as the Tor world's own admin (its distinct API key). Drop any
+			// inbound Authorization so only our injected key is honoured.
+			pr.Out.Header.Set("Authorization", "Bearer "+key)
+			pr.Out.Header.Del("X-Api-Key")
+		},
+		// Never surface a raw 502 to the operator — show the friendly "starting" page.
+		ErrorHandler: func(rw http.ResponseWriter, rq *http.Request, _ error) {
+			a.renderTorWorldUnavailable(rw, rq)
+		},
 	}
 	proxy.ServeHTTP(w, r)
 }

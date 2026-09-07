@@ -18,10 +18,12 @@ package main
 
 import (
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"strings"
 )
 
 func env(k, def string) string {
@@ -44,14 +46,34 @@ func main() {
 		log.Fatalf("screenshot-proxy: bad UPSTREAM %q: %v", upstream, err)
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(target)
-	base := proxy.Director
-	proxy.Director = func(r *http.Request) {
-		base(r)
-		r.Host = target.Host
-		// Inject the credential Chrome headless cannot send itself. Local,
-		// ephemeral, CI-only — the key never leaves the runner.
-		r.Header.Set("X-API-Key", apiKey)
+	proxy := &httputil.ReverseProxy{
+		// Rewrite replaces the Director field, deprecated since Go 1.26
+		// (staticcheck SA1019). Rewrite strips the inbound Forwarded /
+		// X-Forwarded-* headers that Director mode passed through, so they are
+		// re-attached and the immediate peer appended to X-Forwarded-For
+		// exactly as Director mode did.
+		Rewrite: func(pr *httputil.ProxyRequest) {
+			for _, h := range []string{
+				"Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto",
+			} {
+				if vs := pr.In.Header.Values(h); len(vs) > 0 {
+					pr.Out.Header[http.CanonicalHeaderKey(h)] = vs
+				}
+			}
+			if client, _, err := net.SplitHostPort(pr.In.RemoteAddr); err == nil {
+				prior := pr.In.Header.Values("X-Forwarded-For")
+				if len(prior) > 0 {
+					client = strings.Join(prior, ", ") + ", " + client
+				}
+				pr.Out.Header.Set("X-Forwarded-For", client)
+			}
+			pr.Out.URL.Scheme = target.Scheme
+			pr.Out.URL.Host = target.Host
+			pr.Out.Host = target.Host
+			// Inject the credential Chrome headless cannot send itself. Local,
+			// ephemeral, CI-only — the key never leaves the runner.
+			pr.Out.Header.Set("X-API-Key", apiKey)
+		},
 	}
 
 	log.Printf("screenshot-proxy: %s -> %s (injecting X-API-Key)", listen, upstream)

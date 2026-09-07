@@ -1,6 +1,6 @@
 module github.com/johalputt/vayupress
 
-go 1.25.8
+go 1.26.0
 
 // Pinned so a release is reproducible from its tag alone. tag-release.yml
 // builds with GOTOOLCHAIN=auto, so this directive — not whatever the runner
@@ -20,12 +20,12 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.50
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/parquet-go/parquet-go v0.32.0
-	github.com/phuslu/iploc v1.0.20260815
+	github.com/phuslu/iploc v1.0.20260901
 	github.com/rs/cors v1.11.1
 	github.com/sigstore/sigstore-go v1.3.0
 	gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/goptlib v1.6.0
 	gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/lyrebird v0.0.0-20260312101154-fc105a03c0e0
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	rsc.io/qr v0.2.0
 )
 
@@ -121,7 +121,7 @@ require (
 require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
-	github.com/yuin/goldmark v1.8.5
+	github.com/yuin/goldmark v1.8.6
 	golang.org/x/net v0.58.0
 	golang.org/x/sys v0.47.0
 )

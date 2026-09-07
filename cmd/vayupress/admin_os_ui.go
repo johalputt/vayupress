@@ -680,10 +680,10 @@ func (a *App) registerAdminOSUIRoutes(r chi.Router) {
 		pr.With(auth.CSRFTokenMiddleware).Post("/os/api/settings", a.handleOSSettingsAPI)
 		pr.With(auth.CSRFTokenMiddleware).Post("/os/api/posts/quick-create", a.handleOSQuickCreatePost)
 		pr.With(auth.CSRFTokenMiddleware).Post("/os/api/posts/status", a.handleOSPostStatus)
-	// One-request bulk apply for the Posts manager (Wave 4): per-slug outcomes,
-	// in-place row updates and honest tab counts instead of N parallel fetches
-	// and a blind full-page reload.
-	pr.With(auth.CSRFTokenMiddleware).Post("/os/api/posts/bulk", a.handleOSPostsBulk)
+		// One-request bulk apply for the Posts manager (Wave 4): per-slug outcomes,
+		// in-place row updates and honest tab counts instead of N parallel fetches
+		// and a blind full-page reload.
+		pr.With(auth.CSRFTokenMiddleware).Post("/os/api/posts/bulk", a.handleOSPostsBulk)
 		// HTMX in-place publish/unpublish toggle: returns an HTML row fragment
 		// (flipped button + out-of-band status pill) instead of JSON, so the
 		// Posts manager updates the row without a full-page reload.
@@ -2321,7 +2321,7 @@ func osLoginPage(prefillEmail, errMsg, next string) string {
         <input id="login-password" class="input" type="password" name="password"
           placeholder="Your password" autocomplete="current-password" required>
       </div>
-      <details class="login-totp"` + loginTOTPOpen(errHTML) + `>
+      <details class="login-totp"`+loginTOTPOpen(errHTML)+`>
         <summary class="login-totp__summary">Sign in with a 2FA code</summary>
         <div class="field">
           <label class="field-label" for="login-totp">Two-factor code</label>

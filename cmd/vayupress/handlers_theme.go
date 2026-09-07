@@ -325,25 +325,11 @@ func (a *App) handleVayuWebAsset(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(data)
 }
 
-// handleThemeGet renders the admin theme-editor page.
-func (a *App) handleThemeGet(w http.ResponseWriter, r *http.Request) {
-	vals, err := a.siteSettings.GetAll(r.Context(), settings.ForPrimary())
-	if err != nil {
-		http.Error(w, "failed to load settings", 500)
-		return
-	}
-	// Seed the CSRF cookie the page's Save/Reset/favicon POSTs read back via the
-	// X-CSRF-Token header. This GET route isn't wrapped in CSRFTokenMiddleware, so
-	// without this a visitor landing directly on /admin/theme would have no token
-	// and every governed write would 403 until they bounced through another page.
-	// csrfTokenFor also covers the case this originally missed: a cookie that is
-	// PRESENT but no longer valid (the secret rotates on restart) was left alone,
-	// so every governed write 403'd and reloading never recovered it.
-	csrfTokenFor(w, r)
-	modeStr := string(mode.Global.Current())
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, themeEditorPage(vals, modeStr, render.CSPNonce(r), ""))
-}
+// handleThemeGet was the /admin/theme theme-editor page. The route is gone:
+// the console's theme surface lives at /os/theme and the legacy path now
+// redirects there (admin_legacy.go), which left this handler with no caller —
+// staticcheck's U1000 rightly flagged it as dead. themeEditorPage stays: the
+// theme-contrast tests render through it directly.
 
 // themeExportVersion is the schema version of an exported theme bundle. Bump it
 // only on a breaking change to the export shape so importers can refuse bundles

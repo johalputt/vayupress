@@ -6,6 +6,89 @@ Format: [Added / Changed / Deprecated / Fixed / Security / Upgrade Notes / Ethic
 
 ---
 
+## [3.17.62] — 2026-09-07
+
+### Added
+
+- **Signed draft-share links (Waves 4.4).** `POST /os/api/posts/{slug}/share`
+  mints a 48-hour preview token through the same signer the API uses, so a
+  draft reaches a reviewer without becoming public. The editor's new
+  "Share draft" button copies the link; published posts refuse with an
+  honest 409 instead of minting a token that implies exclusivity over
+  content that is already public.
+- **Rich paste in the editor (Wave 4.3).** Pasting `text/html` onto an empty
+  paragraph sanitises the clipboard through DOMPurify to exactly the block
+  vocabulary the editor has (p, headings, lists, quote, code, inline marks)
+  before anything is parsed into blocks — structure survives a copy from a
+  web page or a doc, and nothing unsanitised ever enters the tree.
+- **First-run checklist (Wave 2.5).** A dismissable card on the dashboard
+  walks a new operator through the honest state of their install — posts
+  published, site name and theme personalised, domain configured — with
+  detection that value-diffs against the compiled-in defaults, so a fresh
+  install never shows a step as already done.
+- **Attention strip (Wave 2.2).** The dashboard now surfaces failed background
+  jobs (warn at 1, danger at 10), storage above 75%/90% of quota, and
+  maintenance mode as severity-sorted chips with deep links to the page
+  that fixes them; the bell badge turns danger-coloured when anything is.
+- **Preview device toggles (Wave 4.4).** The editor's live preview can
+  re-size to a phone or tablet width, so responsive truth is visible
+  before publishing instead of after.
+- **Per-row face actions (Wave 3.5).** Posts get a second, always-visible
+  action face for publish/unpublish and pin, kept in lockstep with the row
+  body through HTMX out-of-band swaps verified by parity tests.
+- **Gzip middleware** on the core chain, with its own test coverage.
+
+### Changed
+
+- **Breakpoints consolidated (Wave 3.10).** All 41 console media queries now
+  sit on exactly {480, 640, 768, 900, 1100} px; the 14 off-target widths
+  are gone, and min-width companions were kept paired with their
+  max-width counterparts before anything moved.
+- **Monitoring stamp tells the truth about data age (Wave 3.12).** The
+  "updated HH:MM:SS" liveness stamp now also says how old the metrics
+  snapshot is ("metrics 12s old"), and reads the cache without ever
+  triggering a collection — a stamp that refreshed every 5 seconds over
+  numbers up to half a minute old was a liveness lie.
+- **Activity feed rewritten (Wave 2.3).** Rows are links when a destination
+  exists, verbs match what actually happened ("Article drafted" vs
+  "published"), and the feed polls every 60s and reloads on tab focus.
+- **Console colour tokens pass WCAG AA (Wave 0.3).** Light-theme brand and
+  success tokens were darkened to sky-700/emerald-700 so body text and
+  buttons clear 4.5:1 in both themes, pinned by a contrast-gate test.
+- **DOMPurify loads only where it is used (Wave 3.3).** The sanitizer script
+  tag is emitted on editor pages only; a scoped test pins the rule.
+- **Cool-factor pass (Waves 2.9/3.13).** Gradient CTAs with a hover glow, a
+  180 ms theme-flip crossfade (reduced-motion guarded), and an `@property`
+  conic sweep on dashboard stat cards.
+
+### Security
+
+- **Every destructive action confirms through a real modal (Wave 3.11).**
+  The browser-native confirm() — an unstyled chrome blob that cannot say
+  what will happen — is gone from the entire console. Power, messages,
+  VayuKeep, domains, VayuFlow, scoped content and website, mail recovery,
+  and posts/media bulk all use the CSP-safe `vpConfirm` dialog built with
+  createElement/textContent, with focus restore, Escape, and a Tab cycle.
+  Selector-parity and no-window.confirm tests pin the rule.
+
+### Fixed
+
+- **Draft-born articles survive every write path (Wave 1).** Article status
+  now persists through the write queue (with the historical `published`
+  fallback for old callers), `ArticleService.CreateDraft` gives authoring
+  surfaces a draft-by-default create while the public API keeps its
+  contract, and the test harness mirrors production so drafts are no
+  longer silently republished in tests.
+- **Version history has real data (Wave 1).** Updates snapshot the
+  overwritten row into `article_versions` best-effort within the same
+  transaction, so the editor's History modal is no longer dead plumbing.
+- **Legacy `/admin/theme` redirects to `/os/theme`** instead of a dead
+  handler; the "Update & Migration" page title matches the page.
+- **Test teardown on Windows.** `dbpkg.ClosePools` releases the WAL read
+  pools before temp-dir cleanup, and source-scanning tests normalise CRLF
+  before slicing — teardown failures and phantom "refactor detected"
+  panics are gone from the harness suite.
+
 ## [3.17.61] — 2026-08-26
 
 ### Added

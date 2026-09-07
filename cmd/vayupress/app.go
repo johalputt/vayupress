@@ -86,6 +86,13 @@ type App struct {
 	// HTTP
 	outboundClient *http.Client
 
+	// bgWG tracks fire-and-forget background goroutines this App launched
+	// (currently the async IndexNow announcement). Tests drain it in cleanup so
+	// a goroutine never outlives the test that spawned it — under -race a
+	// survivor reading config globals while the NEXT test's harness reloads
+	// them is a data race, not a style problem.
+	bgWG sync.WaitGroup
+
 	// siemSink holds the opt-in CEF export file (VAYU_SIEM_FILE) so graceful
 	// shutdown can close it; nil when the operator did not opt in.
 	siemSink *siemsink.Sink
@@ -505,6 +512,19 @@ func (a *App) isIndexNowKeyPath(r *http.Request) bool {
 	return k != "" && p == "/"+k+".txt"
 }
 
+// goPingIndexNow launches the IndexNow announcement as TRACKED background
+// work: the goroutine is registered on a.bgWG so a test (or a graceful
+// shutdown) can wait for it. An untracked `go a.pingIndexNow(...)` used to
+// outlive its test and read the config globals while the next test's harness
+// re-loaded them — a genuine data race the -race build rightly killed.
+func (a *App) goPingIndexNow(slug string) {
+	a.bgWG.Add(1)
+	go func() {
+		defer a.bgWG.Done()
+		a.pingIndexNow(slug)
+	}()
+}
+
 // pingIndexNow announces a published post's URL to IndexNow. It returns the
 // outcome — state is one of "submitted", "failed", or "skipped" — and records
 // every real attempt (submitted/failed) to indexnow_submissions so the Posts
@@ -822,7 +842,9 @@ func (a *App) registerEventHandlers() {
 	// Search index + CDN purge + IndexNow on create / update.
 	bus.Subscribe(events.ArticleCreated{}, func(ctx context.Context, ev interface{}) {
 		e := ev.(events.ArticleCreated)
+		a.bgWG.Add(1)
 		go func() {
+			defer a.bgWG.Done()
 			var art dbpkg.Article
 			var tagsStr string
 			if dbpkg.Reader().QueryRow(`SELECT id,title,slug,content,tags,created_at,updated_at FROM articles WHERE slug=?`, e.Slug).
@@ -847,7 +869,9 @@ func (a *App) registerEventHandlers() {
 
 	bus.Subscribe(events.ArticleUpdated{}, func(ctx context.Context, ev interface{}) {
 		e := ev.(events.ArticleUpdated)
+		a.bgWG.Add(1)
 		go func() {
+			defer a.bgWG.Done()
 			var art dbpkg.Article
 			var tagsStr string
 			if dbpkg.Reader().QueryRow(`SELECT id,title,slug,content,tags,created_at,updated_at FROM articles WHERE slug=?`, e.Slug).

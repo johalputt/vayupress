@@ -171,6 +171,12 @@ func newTestHarness(t *testing.T) (*httptest.Server, string) {
 	}
 	a.pluginManager = plugins.New(a.pluginRegistry)
 
+	// Drain the App's tracked background goroutines (IndexNow announcement,
+	// event-driven indexing) BEFORE the DB pools close and before the next
+	// test's config.Load mutates the process globals those goroutines read.
+	// LIFO: registered after the ClosePools cleanup, so it runs before it.
+	t.Cleanup(a.bgWG.Wait)
+
 	r := chi.NewRouter()
 	a.registerRoutes(r, dir)
 

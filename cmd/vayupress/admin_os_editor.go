@@ -292,9 +292,10 @@ func (a *App) applyPostStatus(ctx context.Context, slug, status string) error {
 	// time — announce it to IndexNow so search engines crawl it promptly. The
 	// status-toggle path emits no ArticleUpdated event, so without this a newly
 	// published post would never be submitted. pingIndexNow re-checks that the
-	// post is published, so unpublishing never pings.
+	// post is published, so unpublishing never pings. The goroutine is tracked
+	// on a.bgWG so tests can drain it instead of leaking it across harnesses.
 	if status == "published" {
-		go a.pingIndexNow(slug)
+		a.goPingIndexNow(slug)
 	}
 	atomic.AddInt64(&metrics.MetricPostStatusToggles, 1)
 	return nil

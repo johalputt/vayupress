@@ -71,6 +71,9 @@ func TestOSBulkPublishReportsPerSlugOutcomesAndCounts(t *testing.T) {
 	seedBulkPost(t, "bulk-live", "published")
 
 	a := &App{}
+	// A bulk publish spawns the tracked IndexNow goroutine per slug; drain it
+	// so it cannot race the next test's harness config reload.
+	t.Cleanup(a.bgWG.Wait)
 	code, body := callBulk(t, a, "published", []string{"bulk-draft-1", "bulk-draft-2", "missing-slug"})
 	if code != http.StatusOK {
 		t.Fatalf("status = %d, body = %v", code, body)

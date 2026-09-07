@@ -40,6 +40,9 @@ func TestFaceStatusFragmentParity(t *testing.T) {
 	_, _ = newTestHarness(t)
 	seedFacePost(t, "face-status", "draft", 0)
 	a := &App{}
+	// Publishing here spawns the tracked IndexNow goroutine; drain it before
+	// the next test's harness reloads the process-global config it reads.
+	t.Cleanup(a.bgWG.Wait)
 
 	form := url.Values{"status": {"published"}, "src": {"face"}}
 	req := httptest.NewRequest(http.MethodPost, "/os/api/posts/face-status/status-fragment", strings.NewReader(form.Encode()))

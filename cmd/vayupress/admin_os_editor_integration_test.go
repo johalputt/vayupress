@@ -154,7 +154,9 @@ func TestOSEditorNativeCreatePath(t *testing.T) {
 	}
 
 	// The created article must carry the rendered block content.
-	getResp := doRequest(t, srv, "GET", "/api/v1/articles/"+out.Slug, "", nil)
+	// Drafts are hidden from unauthenticated requests, so we use the
+	// admin key the same way every other editor integration test does.
+	getResp := doRequest(t, srv, "GET", "/api/v1/articles/"+out.Slug, key, nil)
 	body := decodeBody(t, getResp)
 	content, _ := body["content"].(string)
 	if !strings.Contains(content, "<h2>Hello</h2>") || !strings.Contains(content, "Created natively") {

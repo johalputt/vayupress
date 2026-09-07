@@ -174,7 +174,8 @@ func TestRecoveryConsoleJSNeverUsesInnerHTML(t *testing.T) {
 		t.Error("renderStatus clears the codes; it runs after generate, so it would wipe them instantly")
 	}
 	// Regeneration silently invalidates the sheet the holder is carrying.
-	if !strings.Contains(js, "window.confirm") {
+	// Confirmed through the vpConfirm modal (Wave 3.11), not window.confirm.
+	if !strings.Contains(js, "vpConfirm") {
 		t.Error("regenerating codes must be confirmed — it revokes the holder's existing sheet")
 	}
 	if !strings.Contains(js, "X-CSRF-Token") {

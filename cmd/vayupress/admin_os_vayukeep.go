@@ -455,8 +455,9 @@ if(copyBtn){copyBtn.addEventListener('click',function(){
 Array.prototype.forEach.call(document.querySelectorAll('[data-vk-delete]'),function(el){
   el.addEventListener('click',function(){
     var name=el.getAttribute('data-vk-delete');
-    if(!window.confirm('Delete '+name+' permanently?\n\nThis copy is gone, not moved to a bin.'))return;
-    vkPost('/os/api/vayukeep/delete',{name:name},el,'Deleting…','vk-verify-status');
+    vpConfirm({title:'Delete restore point',message:'Delete '+name+' permanently? This copy is gone, not moved to a bin.',confirm:'Delete'},function(){
+      vkPost('/os/api/vayukeep/delete',{name:name},el,'Deleting…','vk-verify-status');
+    });
   });
 });
 var retBtn=document.querySelector('[data-vk-retention]');
@@ -466,8 +467,9 @@ if(retBtn){retBtn.addEventListener('click',function(){
 });}
 var pruneBtn=document.querySelector('[data-vk-prune]');
 if(pruneBtn){pruneBtn.addEventListener('click',function(){
-  if(!window.confirm('Delete every restore point that is outside both limits?'))return;
-  vkPost('/os/api/vayukeep/prune',{},pruneBtn,'Cleaning…','vk-retention-status');
+  vpConfirm({title:'Prune restore points',message:'Delete every restore point that is outside both limits?',confirm:'Prune'},function(){
+    vkPost('/os/api/vayukeep/prune',{},pruneBtn,'Cleaning…','vk-retention-status');
+  });
 });}
 var setupBtn=document.querySelector('[data-vk-setup]');
 if(setupBtn){setupBtn.addEventListener('click',function(){
@@ -476,8 +478,9 @@ if(setupBtn){setupBtn.addEventListener('click',function(){
 });}
 var offBtn=document.querySelector('[data-vk-disable]');
 if(offBtn){offBtn.addEventListener('click',function(){
-  if(!window.confirm('Turn automatic backup off? Your existing restore points are kept, but no new ones will be made.'))return;
-  vkPost('/os/api/vayukeep/disable',{},offBtn,'Turning off…');
+  vpConfirm({title:'Turn automatic backup off?',message:'Your existing restore points are kept, but no new ones will be made.',confirm:'Turn off'},function(){
+    vkPost('/os/api/vayukeep/disable',{},offBtn,'Turning off…');
+  });
 });}
 Array.prototype.forEach.call(document.querySelectorAll('[data-vk-restore]'),function(el){
   el.addEventListener('click',function(){

@@ -16,6 +16,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	htmlpkg "html"
 	htmpl "html/template"
@@ -171,7 +172,11 @@ func (a *App) handleOSEditorSave(w http.ResponseWriter, r *http.Request) {
 		if strings.TrimSpace(seed) == "" {
 			seed = " "
 		}
-		if _, err := a.articles.Create(r.Context(), title, slug, seed, tags); err != nil {
+		// Draft-first authoring (dashboard-upgrade Wave 1): a brand-new post is
+		// born a DRAFT — the first ⌘S must never publish a half-thought to the
+		// live site, the disk cache or RSS. Publishing happens via the explicit
+		// topbar control (or the Posts manager), never as a side effect of saving.
+		if _, err := a.articles.CreateDraft(r.Context(), title, slug, seed, tags); err != nil {
 			writeAPIError(w, r, http.StatusInternalServerError, "create-error", err.Error(), "")
 			return
 		}
@@ -180,7 +185,7 @@ func (a *App) handleOSEditorSave(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.applyPostExtras(r.Context(), slug, body.Meta, body.PublishDate, tags, currentUserIDOf(r))
-		writeJSON(w, r, http.StatusOK, map[string]string{"status": "created", "slug": slug})
+		writeJSON(w, r, http.StatusOK, map[string]string{"status": "created", "slug": slug, "postStatus": "draft"})
 		return
 	}
 
@@ -263,6 +268,38 @@ func parsePublishDate(s string) (time.Time, bool) {
 // handleOSPostStatus publishes or unpublishes (drafts) an article from the post
 // manager. Unpublishing hides it from every public surface; both directions
 // purge the public caches so the change is immediately visible.
+// errPostNotFound marks a slug with no article row, so the single-post and bulk
+// endpoints can both map it to a 404 / per-item failure without duplicating the
+// lookup.
+var errPostNotFound = errors.New("no article with that slug")
+
+// applyPostStatus flips one post's published/draft state and performs the
+// shared side effects: cache purge, IndexNow ping on publish, status-toggle
+// metric. Shared by the JSON endpoint, the HTMX fragment endpoint and the bulk
+// endpoint, so the three can never disagree about what a status flip does.
+func (a *App) applyPostStatus(ctx context.Context, slug, status string) error {
+	var tagsCSV string
+	if err := dbpkg.Reader().QueryRowContext(ctx, `SELECT COALESCE(tags,'') FROM articles WHERE slug=?`, slug).Scan(&tagsCSV); err != nil {
+		return errPostNotFound
+	}
+	if _, err := dbpkg.WDB.Exec(`UPDATE articles SET status=?, updated_at=? WHERE slug=?`, status, time.Now().UTC(), slug); err != nil {
+		return err
+	}
+	// Purge public caches (article page, homepage, tag pages, sitemap, feed) so
+	// an unpublish disappears — and a publish appears — without delay.
+	render.CachePurge(slug, splitCSVTags(tagsCSV), generateSitemap, generateRSS, generateRobots)
+	// Publishing a (previously draft) post makes its URL public for the first
+	// time — announce it to IndexNow so search engines crawl it promptly. The
+	// status-toggle path emits no ArticleUpdated event, so without this a newly
+	// published post would never be submitted. pingIndexNow re-checks that the
+	// post is published, so unpublishing never pings.
+	if status == "published" {
+		go a.pingIndexNow(slug)
+	}
+	atomic.AddInt64(&metrics.MetricPostStatusToggles, 1)
+	return nil
+}
+
 func (a *App) handleOSPostStatus(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Slug   string `json:"slug"`
@@ -278,27 +315,14 @@ func (a *App) handleOSPostStatus(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, r, http.StatusBadRequest, "bad-input", "slug and a valid status (published|draft) are required", "")
 		return
 	}
-	var tagsCSV string
-	if err := dbpkg.Reader().QueryRowContext(r.Context(), `SELECT COALESCE(tags,'') FROM articles WHERE slug=?`, slug).Scan(&tagsCSV); err != nil {
-		writeAPIError(w, r, http.StatusNotFound, "not-found", "No article with that slug", "")
-		return
-	}
-	if _, err := dbpkg.WDB.Exec(`UPDATE articles SET status=?, updated_at=? WHERE slug=?`, status, time.Now().UTC(), slug); err != nil {
+	if err := a.applyPostStatus(r.Context(), slug, status); err != nil {
+		if err == errPostNotFound {
+			writeAPIError(w, r, http.StatusNotFound, "not-found", "No article with that slug", "")
+			return
+		}
 		writeAPIError(w, r, http.StatusInternalServerError, "update-error", err.Error(), "")
 		return
 	}
-	// Purge public caches (article page, homepage, tag pages, sitemap, feed) so
-	// an unpublish disappears — and a publish appears — without delay.
-	render.CachePurge(slug, splitCSVTags(tagsCSV), generateSitemap, generateRSS, generateRobots)
-	// Publishing a (previously draft) post makes its URL public for the first
-	// time — announce it to IndexNow so search engines crawl it promptly. The
-	// status-toggle path emits no ArticleUpdated event, so without this a newly
-	// published post would never be submitted. pingIndexNow re-checks that the
-	// post is published, so unpublishing never pings.
-	if status == "published" {
-		go a.pingIndexNow(slug)
-	}
-	atomic.AddInt64(&metrics.MetricPostStatusToggles, 1)
 	writeJSON(w, r, http.StatusOK, map[string]string{"status": status, "slug": slug})
 }
 
@@ -317,25 +341,58 @@ func (a *App) handleOSPostToggleFragment(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "a valid slug and status (published|draft) are required", http.StatusBadRequest)
 		return
 	}
-	var tagsCSV string
-	if err := dbpkg.Reader().QueryRowContext(r.Context(), `SELECT COALESCE(tags,'') FROM articles WHERE slug=?`, slug).Scan(&tagsCSV); err != nil {
-		http.Error(w, "no article with that slug", http.StatusNotFound)
-		return
-	}
-	if _, err := dbpkg.WDB.Exec(`UPDATE articles SET status=?, updated_at=? WHERE slug=?`, status, time.Now().UTC(), slug); err != nil {
+	if err := a.applyPostStatus(r.Context(), slug, status); err != nil {
+		if err == errPostNotFound {
+			http.Error(w, "no article with that slug", http.StatusNotFound)
+			return
+		}
 		http.Error(w, "update failed", http.StatusInternalServerError)
 		return
 	}
-	// Same cache-purge + IndexNow behaviour as the JSON path, so an unpublish
-	// disappears (and a publish appears + is announced) without delay.
-	render.CachePurge(slug, splitCSVTags(tagsCSV), generateSitemap, generateRSS, generateRobots)
-	if status == "published" {
-		go a.pingIndexNow(slug)
-	}
-	atomic.AddInt64(&metrics.MetricPostStatusToggles, 1)
 	esc := htmlpkg.EscapeString(slug)
+	// Wave 3.5: the publish toggle now exists twice per row (face + accordion).
+	// Whichever copy was clicked is returned in place; the OTHER copy and the
+	// status pill are updated out-of-band so both copies flip on one click.
+	src := strings.TrimSpace(r.FormValue("src"))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, osPostStatusButton(esc, status)+osPostStatusOOB(esc, status))
+	if src == "face" {
+		fmt.Fprint(w, osPostStatusFaceButton(esc, status)+osPostStatusButtonOOB(esc, status)+osPostStatusOOB(esc, status))
+		return
+	}
+	fmt.Fprint(w, osPostStatusButton(esc, status)+osPostStatusFaceButtonOOB(esc, status)+osPostStatusOOB(esc, status))
+}
+
+// handleOSPostShare issues a signed preview link for a DRAFT through the same
+// signer the API uses, so a draft can be shared with a reviewer without making
+// it public (Wave 4.4). Published posts are refused with a clear message —
+// they are already reachable, and a "share" that shares nothing but a token is
+// a lie. The link expires (48h default) and stops working the moment the
+// signer's tokens do.
+func (a *App) handleOSPostShare(w http.ResponseWriter, r *http.Request) {
+	slug := strings.TrimSpace(chi.URLParam(r, "slug"))
+	if !api.IsValidSlug(slug) {
+		writeAPIError(w, r, http.StatusBadRequest, "bad-slug", "A valid slug is required", "")
+		return
+	}
+	var status string
+	if err := dbpkg.Reader().QueryRowContext(r.Context(), `SELECT COALESCE(status,'published') FROM articles WHERE slug=?`, slug).Scan(&status); err != nil {
+		writeAPIError(w, r, http.StatusNotFound, "not-found", "No article with that slug", "")
+		return
+	}
+	if status != "draft" {
+		writeAPIError(w, r, http.StatusConflict, "not-a-draft", "Only drafts can be shared — this post is already public at /"+slug, "")
+		return
+	}
+	if a.previewSigner == nil {
+		writeAPIError(w, r, http.StatusServiceUnavailable, "preview-disabled", "Preview links are not available on this install", "")
+		return
+	}
+	token := a.previewSigner.Issue(slug, 48*time.Hour)
+	writeJSON(w, r, http.StatusOK, map[string]string{
+		"token": token,
+		"url":   "https://" + r.Host + "/" + slug + "?preview=" + token,
+		"ttl":   "48h",
+	})
 }
 
 // handleOSPostIndexNowFragment lets an operator manually (re-)submit a single
@@ -403,8 +460,15 @@ func (a *App) handleOSPostPinFragment(w http.ResponseWriter, r *http.Request) {
 	render.CachePurge(slug, splitCSVTags(tagsCSV), generateSitemap, generateRSS, generateRobots)
 	atomic.AddInt64(&metrics.MetricPostPinToggles, 1)
 	esc := htmlpkg.EscapeString(slug)
+	// Wave 3.5: same dual-copy parity as the status fragment — the clicked copy
+	// is returned in place, the other copy and the pinned badge go out-of-band.
+	src := strings.TrimSpace(r.FormValue("src"))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, osPostPinButton(esc, featured)+osPostPinBadge(esc, featured, true))
+	if src == "face" {
+		fmt.Fprint(w, osPostPinFaceButton(esc, featured)+osPostPinButtonOOB(esc, featured)+osPostPinBadge(esc, featured, true))
+		return
+	}
+	fmt.Fprint(w, osPostPinButton(esc, featured)+osPostPinFaceButtonOOB(esc, featured)+osPostPinBadge(esc, featured, true))
 }
 
 // handleOSPostPin pins or unpins (features) a post directly from the manager,
@@ -462,19 +526,48 @@ func (a *App) handleOSPostDelete(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, r, http.StatusBadRequest, "bad-input", "a slug is required", "")
 		return
 	}
-	var id, tagsCSV string
-	if err := dbpkg.Reader().QueryRowContext(r.Context(), `SELECT id,COALESCE(tags,'') FROM articles WHERE slug=?`, slug).Scan(&id, &tagsCSV); err != nil {
-		writeAPIError(w, r, http.StatusNotFound, "not-found", "No post with that slug", "")
-		return
-	}
-	// Deletion is the irreversible half: there is no snapshot to restore from, and
-	// the comments go with it.
-	if a.refuseArticleWrite(w, r, slug) {
-		return
-	}
-	if _, err := dbpkg.WDB.Exec(`DELETE FROM articles WHERE slug=?`, slug); err != nil {
+	if err := a.deletePostBySlug(r.Context(), r, slug); err != nil {
+		if err == errPostNotFound {
+			writeAPIError(w, r, http.StatusNotFound, "not-found", "No post with that slug", "")
+			return
+		}
+		var refused *refusedWriteError
+		if errors.As(err, &refused) {
+			writeAPIError(w, r, http.StatusForbidden, "not-your-post", refused.Error(), "")
+			return
+		}
 		writeAPIError(w, r, http.StatusInternalServerError, "delete-error", err.Error(), "")
 		return
+	}
+	writeJSON(w, r, http.StatusOK, map[string]string{"status": "deleted", "slug": slug})
+}
+
+// refusedWriteError marks a per-slug write refusal (ownership or mode), so the
+// single-post and bulk endpoints can map it to 403 without re-running the
+// predicate or writing to the response from inside the helper.
+type refusedWriteError struct{ reason string }
+
+func (e *refusedWriteError) Error() string { return e.reason }
+
+// deletePostBySlug removes one post and its comments, purges the public caches
+// and writes the audit trail. Shared by the single DELETE endpoint and the bulk
+// endpoint, so bulk deletion can never drift from single deletion. Deletion is
+// the irreversible half: there is no snapshot to restore from, and the comments
+// go with it.
+func (a *App) deletePostBySlug(ctx context.Context, r *http.Request, slug string) error {
+	if cur := mode.Global.Current(); cur == mode.ModeReadOnly || cur == mode.ModeQuarantined {
+		return errors.New("posts cannot be deleted in " + string(cur) + " mode")
+	}
+	var id, tagsCSV string
+	if err := dbpkg.Reader().QueryRowContext(ctx, `SELECT id,COALESCE(tags,'') FROM articles WHERE slug=?`, slug).Scan(&id, &tagsCSV); err != nil {
+		return errPostNotFound
+	}
+	if reason := a.articleWriteRefusal(r, slug); reason != "" {
+		dbpkg.AuditLog("article.write.refused", dbpkg.AuditActor(r), slug, reason)
+		return &refusedWriteError{reason: reason}
+	}
+	if _, err := dbpkg.WDB.Exec(`DELETE FROM articles WHERE slug=?`, slug); err != nil {
+		return err
 	}
 	// Best-effort cleanup of the post's comments (orphans otherwise).
 	_, _ = dbpkg.WDB.Exec(`DELETE FROM comments WHERE article_id=?`, id)
@@ -485,7 +578,134 @@ func (a *App) handleOSPostDelete(w http.ResponseWriter, r *http.Request) {
 		Level: "info", Component: "editor", Severity: "info",
 		Msg: "post deleted: " + slug, RequestID: getRequestID(r),
 	})
-	writeJSON(w, r, http.StatusOK, map[string]string{"status": "deleted", "slug": slug})
+	return nil
+}
+
+// osBulkMaxSlugs caps one bulk request: the batch is N single-post operations
+// (each with a cache purge), and an unbounded list would let one request pin
+// the server for minutes. 200 covers any page of the posts manager (100/page)
+// with headroom for a multi-page selection.
+const osBulkMaxSlugs = 200
+
+// bulkPostResult is the per-slug outcome of a bulk request.
+type bulkPostResult struct {
+	Slug   string `json:"slug"`
+	OK     bool   `json:"ok"`
+	Error  string `json:"error,omitempty"`
+	Status string `json:"status,omitempty"`
+	Pill   string `json:"pill,omitempty"`
+	Button string `json:"button,omitempty"`
+}
+
+// handleOSPostsBulk is the ONE-request bulk endpoint for the Posts manager:
+// POST /os/api/posts/bulk {"action":"published"|"draft"|"delete","slugs":[…]}.
+// It replaces the client-side loop of N parallel fetches, which raced the
+// server, gave no per-slug outcomes, and could only recover by reloading the
+// page away. Each slug is applied independently through the SAME helpers as the
+// single-post endpoints (applyPostStatus / deletePostBySlug), so a failure is
+// reported per slug and the successes stand. Status actions additionally return
+// each slug's flipped pill + toggle button (the same markup the HTMX fragment
+// endpoint returns) so the rows update in place without a reload, plus the
+// recomputed All/Published/Drafts counts so the tabs stay honest.
+func (a *App) handleOSPostsBulk(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Action string   `json:"action"`
+		Slugs  []string `json:"slugs"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&body); err != nil {
+		writeAPIError(w, r, http.StatusBadRequest, "bad-json", "Invalid request body", "")
+		return
+	}
+	action := strings.TrimSpace(body.Action)
+	if action != "published" && action != "draft" && action != "delete" {
+		writeAPIError(w, r, http.StatusBadRequest, "bad-input", "action must be published, draft or delete", "")
+		return
+	}
+	if len(body.Slugs) == 0 || len(body.Slugs) > osBulkMaxSlugs {
+		writeAPIError(w, r, http.StatusBadRequest, "bad-input",
+			"slugs must contain between 1 and "+strconv.Itoa(osBulkMaxSlugs)+" slugs", "")
+		return
+	}
+	seen := make(map[string]struct{}, len(body.Slugs))
+	slugs := make([]string, 0, len(body.Slugs))
+	for _, s := range body.Slugs {
+		s = strings.TrimSpace(s)
+		if !api.IsValidSlug(s) {
+			writeAPIError(w, r, http.StatusBadRequest, "bad-input", "every slug must be a valid post slug", "")
+			return
+		}
+		if _, dup := seen[s]; dup {
+			continue
+		}
+		seen[s] = struct{}{}
+		slugs = append(slugs, s)
+	}
+
+	results := make([]bulkPostResult, 0, len(slugs))
+	okN := 0
+	for _, slug := range slugs {
+		res := bulkPostResult{Slug: slug}
+		var err error
+		if action == "delete" {
+			err = a.deletePostBySlug(r.Context(), r, slug)
+		} else {
+			err = a.applyPostStatus(r.Context(), slug, action)
+		}
+		if err != nil {
+			res.Error = err.Error()
+		} else {
+			res.OK = true
+			okN++
+			if action != "delete" {
+				res.Status = action
+				res.Pill = osPostStatusPill(action)
+				res.Button = osPostStatusButton(htmlpkg.EscapeString(slug), action)
+			}
+		}
+		results = append(results, res)
+	}
+
+	resp := struct {
+		OK      int              `json:"ok"`
+		Failed  int              `json:"failed"`
+		Results []bulkPostResult `json:"results"`
+		Counts  map[string]int   `json:"counts,omitempty"`
+	}{OK: okN, Failed: len(slugs) - okN, Results: results}
+	if action != "delete" {
+		// The tabs must describe the catalogue AS IT NOW IS, not as it was when
+		// the page loaded — otherwise the numbers lie the moment the batch lands.
+		if counts, err := postStatusCounts(r.Context()); err == nil {
+			resp.Counts = counts
+		}
+	}
+	writeJSON(w, r, http.StatusOK, resp)
+}
+
+// postStatusCounts recomputes the All/Published/Drafts tab counts. status is
+// NOT NULL DEFAULT 'published' (migration 030), so the query groups by the bare
+// column — COALESCE would defeat idx_articles_status and force a full scan (the
+// same reasoning as the posts page's count query).
+func postStatusCounts(ctx context.Context) (map[string]int, error) {
+	counts := map[string]int{"all": 0, "published": 0, "draft": 0}
+	rows, err := dbpkg.Reader().QueryContext(ctx, `SELECT status, COUNT(1) FROM articles GROUP BY status`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var s string
+		var c int
+		if err := rows.Scan(&s, &c); err != nil {
+			return nil, err
+		}
+		counts["all"] += c
+		if s == "draft" {
+			counts["draft"] += c
+		} else {
+			counts["published"] += c
+		}
+	}
+	return counts, rows.Err()
 }
 
 // splitCSVTags splits a stored comma-separated tag string into a slice.
@@ -671,6 +891,68 @@ func (a *App) handleOSEditorVersionGet(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, r, http.StatusOK, v)
 }
 
+// handleOSEditorVersionRestore rewinds an article to a stored snapshot
+// (dashboard-upgrade Wave 1): history that can only be read is documentation,
+// not a safety net. The article's title/content/tags return to the snapshot and
+// the block document is rebuilt from the restored HTML so the editor rehydrates
+// what was actually restored (ImportHTML is conservative; anything it cannot
+// express becomes markdown/raw-HTML blocks rather than being dropped).
+func (a *App) handleOSEditorVersionRestore(w http.ResponseWriter, r *http.Request) {
+	if a.versionStore == nil {
+		writeAPIError(w, r, http.StatusServiceUnavailable, "versions-disabled", "Version store not initialised", "")
+		return
+	}
+	if a.articles == nil {
+		writeAPIError(w, r, http.StatusServiceUnavailable, "unavailable", "article service not initialised", "")
+		return
+	}
+	slug := strings.TrimSpace(chi.URLParam(r, "slug"))
+	if !api.IsValidSlug(slug) {
+		writeAPIError(w, r, http.StatusBadRequest, "bad-input", "A valid slug is required", "")
+		return
+	}
+	// Same ownership gate as every other destructive write on this surface.
+	if a.refuseArticleWrite(w, r, slug) {
+		return
+	}
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeAPIError(w, r, http.StatusBadRequest, "bad-id", "Version id must be an integer", "")
+		return
+	}
+	v, err := a.versionStore.Get(r.Context(), id)
+	if err != nil || v == nil {
+		writeAPIError(w, r, http.StatusNotFound, "not-found", "Version not found", "")
+		return
+	}
+	if v.Slug != slug {
+		writeAPIError(w, r, http.StatusBadRequest, "version-mismatch", "That version belongs to a different post", "")
+		return
+	}
+	restoredTags := v.Tags
+	if restoredTags == nil {
+		restoredTags = []string{}
+	}
+	if _, err := a.articles.Update(r.Context(), slug, &v.Title, &v.Content, restoredTags); err != nil {
+		writeAPIError(w, r, http.StatusInternalServerError, "restore-error", err.Error(), "")
+		return
+	}
+	// Best-effort hydration document: the canonical article content above is the
+	// source of truth for readers; this keeps the editor's canvas faithful.
+	blocks := blockrender.ImportHTML(v.Content)
+	blocksJSON := "[]"
+	if len(blocks) > 0 {
+		if raw, mErr := json.Marshal(blocks); mErr == nil {
+			blocksJSON = string(raw)
+		}
+	}
+	if err := persistBlocksJSON(r.Context(), slug, blocksJSON); err != nil {
+		logging.LogError("os-editor", "restore blocks_json persist failed", err.Error())
+	}
+	render.CachePurge(slug, restoredTags, generateSitemap, generateRSS, generateRobots)
+	writeJSON(w, r, http.StatusOK, map[string]string{"status": "restored", "slug": slug})
+}
+
 // osEditorBody builds the block-editor shell. The editor hydrates from the
 // <script type="application/json" id="vp-editor-data"> document on first paint;
 // an empty value starts a fresh document.
@@ -696,10 +978,13 @@ var osEditorHeadTmpl = htmpl.Must(htmpl.New("oseditorhead").Parse(
       <button type="button" class="btn btn--ghost btn--sm" data-editor-md-btn title="Edit the whole post as Markdown (Ctrl/Cmd+Shift+M)" aria-pressed="false">Markdown</button>
       <button type="button" class="btn btn--ghost btn--sm" data-editor-html-btn title="Edit HTML source (Ctrl/Cmd+Shift+H)" aria-pressed="false">HTML</button>
       <button type="button" class="btn btn--ghost btn--sm" data-editor-preview-btn>Preview</button>
+      <button type="button" class="btn btn--ghost btn--sm" data-editor-share-btn title="Copy a 48-hour preview link for this draft — it stays a draft">🔗 Share draft</button>
       <button type="button" class="btn btn--ghost btn--sm" data-editor-image-btn title="Upload an image and insert it here">🖼 Image</button>
       <button type="button" class="btn btn--ghost btn--sm" data-editor-ai-btn title="Write a draft from a prompt with AI">✨ AI</button>
       <button type="button" class="btn btn--ghost btn--sm" data-editor-settings-btn title="Post settings (Ctrl/Cmd+Shift+P)" aria-pressed="false">⚙ Settings</button>
       <button type="button" class="btn btn--ghost btn--sm" data-editor-newpage title="Create a new standalone page">＋ Page</button>
+      <span class="editor-pubstate" data-editor-pubstate hidden></span>
+      <button type="button" class="btn btn--accent btn--sm" data-editor-publish-btn hidden title="Publish to the live site"></button>
       <button type="button" class="btn btn--primary btn--sm" data-editor-save>Save</button>
     </div>
   </div>

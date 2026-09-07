@@ -81,6 +81,22 @@ func Reader() *sql.DB {
 	return DB
 }
 
+// ClosePools closes the WAL read pools (RDB and ARDB). Test-only convenience:
+// on Windows an open pool handle keeps the database file locked, so a temp-dir
+// cleanup cannot delete it and every otherwise-passing harness test reports a
+// teardown failure. Production never calls this — the pools live for the
+// process lifetime.
+func ClosePools() {
+	if RDB != nil {
+		_ = RDB.Close()
+		RDB = nil
+	}
+	if ARDB != nil {
+		_ = ARDB.Close()
+		ARDB = nil
+	}
+}
+
 // ARDB is the DEDICATED admin/VayuOS read pool — physically separate from the
 // public read pool (RDB). This is the isolation guarantee that keeps VayuOS
 // responsive "under any load": the public site, a bot/crawler flood, and a

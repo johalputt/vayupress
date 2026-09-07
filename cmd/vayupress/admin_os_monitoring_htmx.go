@@ -71,13 +71,35 @@ func monBudgetStatePill(name, state string, oob bool) string {
 		html.EscapeString(state) + `</span>`
 }
 
-// monUpdatedStamp renders the "updated HH:MM:SS" liveness stamp. It reflects the
-// server clock at render time (an operator dashboard cares about server time,
-// and this removes the last reason to run client JS here). Kept out of any
-// aria-live region so it is not announced to screen readers every 5s.
-func monUpdatedStamp(now time.Time, oob bool) string {
-	return `<span class="text-sm muted" data-mon-updated id="mon-updated"` + oobAttr(oob) + `>updated ` +
-		html.EscapeString(now.Format("15:04:05")) + `</span>`
+// monUpdatedStamp renders the "updated HH:MM:SS" liveness stamp with an honest
+// data-age note (Wave 3.12): the poll tick reflects SERVER time, but the
+// metrics on the cards come from a snapshot collected on a 30s ticker — a stamp
+// that refreshed every 5 seconds while the numbers under it were up to half a
+// minute old was a liveness lie. The snapshot age is rendered next to the poll
+// time so both truths are visible. Kept out of any aria-live region so it is
+// not announced to screen readers every 5s.
+func monUpdatedStamp(now time.Time, snapAge time.Duration, oob bool) string {
+	out := `<span class="text-sm muted" data-mon-updated id="mon-updated"` + oobAttr(oob) + `>updated ` +
+		html.EscapeString(now.Format("15:04:05"))
+	if snapAge >= 0 {
+		out += ` · metrics ` + html.EscapeString(snapAge.Truncate(time.Second).String()) + ` old`
+	}
+	return out + `</span>`
+}
+
+// nowSnapAge returns the metrics snapshot's age for the stamp, or -1 when no
+// snapshot is cached yet (the stamp then omits the age rather than inventing
+// one). Deliberately cache-read-only: the stamp must never trigger a metric
+// collection just to say how old the numbers are — the 30s ticker owns that.
+func (a *App) nowSnapAge() time.Duration {
+	if v := a.metricsSnapshot.Load(); v != nil {
+		age := time.Since(v.(*adminMetricsSnapshot).SnapshotAt)
+		if age < 0 {
+			return 0
+		}
+		return age
+	}
+	return -1
 }
 
 // handleOSMonitoringLive is the HTMX poll endpoint behind the Monitoring page's
@@ -98,7 +120,7 @@ func (a *App) handleOSMonitoringLive(w http.ResponseWriter, r *http.Request) {
 	for _, bd := range budget.Global.Status(now) {
 		b.WriteString(monBudgetStatePill(bd.Name, bd.State, true))
 	}
-	b.WriteString(monUpdatedStamp(now, true))
+	b.WriteString(monUpdatedStamp(now, a.nowSnapAge(), true))
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")

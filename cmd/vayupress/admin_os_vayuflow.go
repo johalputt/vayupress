@@ -479,11 +479,12 @@ document.addEventListener('click',function(ev){
     var did=del.getAttribute('data-flow-delete');
     // Confirmed by NAME, not by id. An operator asked to confirm an opaque hex
     // string is being asked to agree to something they cannot read.
-    if(!window.confirm('Delete "'+del.getAttribute('data-flow-name')+'"? Its runs stay in the trail.')){ return; }
+    vpConfirm({title:'Delete flow',message:'Delete "'+del.getAttribute('data-flow-name')+'"? Its runs stay in the trail.',confirm:'Delete'},function(){
     say('Deleting…');
     post('/os/api/vayuflow/delete?id='+encodeURIComponent(did),function(res){
       if(res.ok){ say('Deleted. Reload to refresh.'); }
       else { say((res.d&&res.d.error&&(res.d.error.message||res.d.error))||'Could not delete it.'); }
+    });
     });
   }
 });

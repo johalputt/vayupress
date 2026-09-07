@@ -58,8 +58,14 @@ func TestTheAgentAdvertisesAndHandlesRealIP(t *testing.T) {
 		t.Fatal("the agent advertises realip=1 and has no reconciler for it")
 	}
 	// Advertised, defined — and actually called. A reconciler that exists but is
-	// not in the poll loop is the same outage with more code.
-	loop := agent[strings.Index(agent, "reconcile_tier2\n"):]
+	// not in the poll loop is the same outage with more code. Slice the poll
+	// loop's function body out with the same helper the other tests use; an
+	// unguarded strings.Index here used to panic (slice from -1) whenever the
+	// marker drifted, instead of reporting the drift as a failure.
+	loop := shellFuncBody(agent, "run_agent")
+	if loop == "" {
+		t.Fatal("the agent has no run_agent poll loop, so nothing would ever reconcile")
+	}
 	if !strings.Contains(loop, "reconcile_realip") {
 		t.Error("reconcile_realip is defined but never called from the poll loop")
 	}

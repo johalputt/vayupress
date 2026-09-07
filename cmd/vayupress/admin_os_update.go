@@ -2,7 +2,7 @@
 
 package main
 
-// admin_os_update.go — VayuOS "Update & Backup" panel.
+// admin_os_update.go — VayuOS "Update & Migration" panel.
 //
 // This brings two operator capabilities that previously required shell access
 // (CLI `vayupress update …`, manual file copies) into a single one-click admin
@@ -240,7 +240,7 @@ func (a *App) handleOSUpdate(w http.ResponseWriter, r *http.Request) {
   </table></div>`
 
 	body := `<div class="page-header">
-  <h1>Update &amp; Backup</h1>
+  <h1>Update &amp; Migration</h1>
   <div class="page-actions">
     <span class="text-sm muted">Current version <strong>v` + html.EscapeString(Version) + `</strong> · mode <strong>` + html.EscapeString(curMode) + `</strong></span>
   </div>
@@ -299,7 +299,7 @@ func (a *App) handleOSUpdate(w http.ResponseWriter, r *http.Request) {
 
 <script nonce="` + nonce + `" src="/os/static/js/admin-os-update.js?v=` + assetVer("js/admin-os-update.js") + `"></script>`
 
-	writeOSHTML(w, r, adminOSLayout(nonce, "Update & Backup", "update", cfg, htmpl.HTML(body)))
+	writeOSHTML(w, r, adminOSLayout(nonce, "Update & Migration", "update", cfg, htmpl.HTML(body)))
 }
 
 // updateHistoryRowsHTML renders the most recent update_history rows as table

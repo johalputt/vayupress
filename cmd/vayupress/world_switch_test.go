@@ -51,7 +51,10 @@ func worldSwitchApp(t *testing.T) *App {
 	if err := dbpkg.Init(); err != nil {
 		t.Fatalf("db init: %v", err)
 	}
-	t.Cleanup(func() { _ = dbpkg.DB.Close() })
+	t.Cleanup(func() {
+		dbpkg.ClosePools()
+		_ = dbpkg.DB.Close()
+	})
 	return &App{siteSettings: settings.New(dbpkg.DB), userStore: users.New(dbpkg.DB)}
 }
 

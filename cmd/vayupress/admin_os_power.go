@@ -279,12 +279,15 @@ var card=document.querySelector('[data-power-card]');
 var tgl=document.querySelector('[data-power-toggle]');
 if(tgl){tgl.addEventListener('click',function(){
   var turnOn=tgl.getAttribute('data-on')!=='1';
-  if(turnOn&&!window.confirm('Take the public site offline now? Visitors will see the maintenance page. Your admin console stays open.')){return;}
+  var apply=function(){
   tgl.disabled=true;
   post('/os/api/power/maintenance',{on:turnOn}).then(function(r){return r.json();}).then(function(j){
     if(j&&j.ok){toast(turnOn?'Maintenance mode is ON — the public site is offline.':'Maintenance mode is OFF — your site is live.','ok');setTimeout(function(){location.reload();},700);}
     else{tgl.disabled=false;toast((j&&j.error&&j.error.message)||'Could not change maintenance mode','error');}
   }).catch(function(){tgl.disabled=false;toast('Network error','error');});
+  };
+  if(turnOn){vpConfirm({title:'Go offline?',message:'Take the public site offline now? Visitors will see the maintenance page. Your admin console stays open.',confirm:'Go offline'},apply);return;}
+  apply();
 });}
 var saveBtn=document.querySelector('[data-power-savemsg]');
 if(saveBtn){saveBtn.addEventListener('click',function(){
@@ -306,30 +309,35 @@ if(fbBtn){fbBtn.addEventListener('click',function(){
 var crawlBtn=document.querySelector('[data-crawlers-toggle]');
 if(crawlBtn){crawlBtn.addEventListener('click',function(){
   var block=crawlBtn.getAttribute('data-on')!=='1';
-  if(block&&!window.confirm('Block all search engines and AI crawlers now? Your site stops being indexed until you allow crawlers again.')){return;}
+  var apply=function(){
   crawlBtn.disabled=true;
   post('/os/api/power/crawlers',{block:block}).then(function(r){return r.json();}).then(function(j){
     if(j&&j.ok){toast(block?'Search engines & AI crawlers are now blocked.':'Crawlers are allowed again — your site can be indexed.','ok');setTimeout(function(){location.reload();},700);}
     else{crawlBtn.disabled=false;toast((j&&j.error&&j.error.message)||'Could not change crawler access','error');}
   }).catch(function(){crawlBtn.disabled=false;toast('Network error','error');});
+  };
+  if(block){vpConfirm({title:'Block crawlers?',message:'Block all search engines and AI crawlers now? Your site stops being indexed until you allow crawlers again.',confirm:'Block'},apply);return;}
+  apply();
 });}
 var reBtn=document.querySelector('[data-power-restart]');
 if(reBtn){reBtn.addEventListener('click',function(){
-  if(!window.confirm('Restart the app now? The site is unavailable for a few seconds and comes back automatically.')){return;}
+  vpConfirm({title:'Restart the app?',message:'Restart the app now? The site is unavailable for a few seconds and comes back automatically.',confirm:'Restart'},function(){
   reBtn.disabled=true;
   post('/os/api/power/restart').then(function(r){return r.json();}).then(function(j){
     toast('Restarting… this page will reconnect in a few seconds.','ok');
     setTimeout(function(){location.reload();},9000);
   }).catch(function(){toast('Restart signal sent — reconnecting shortly.','ok');setTimeout(function(){location.reload();},9000);});
+  });
 });}
 var offBtn=document.querySelector('[data-power-shutdown]');
 if(offBtn){offBtn.addEventListener('click',function(){
-  if(!window.confirm('Shut the site down? Maintenance mode turns ON and the app restarts, coming back with the public site OFF. You can bring it back any time from this page.')){return;}
+  vpConfirm({title:'Shut the site down?',message:'Maintenance mode turns ON and the app restarts, coming back with the public site OFF. You can bring it back any time from this page.',confirm:'Shut down'},function(){
   offBtn.disabled=true;
   post('/os/api/power/shutdown').then(function(r){return r.json();}).then(function(j){
     toast('Shutting down to maintenance… reconnecting shortly.','ok');
     setTimeout(function(){location.reload();},9000);
   }).catch(function(){toast('Shutdown signal sent.','ok');setTimeout(function(){location.reload();},9000);});
+  });
 });}
 })();
 </script>`

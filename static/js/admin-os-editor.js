@@ -685,6 +685,24 @@
               setTimeout(function () { unfurlEmbedAt(idx, clip); }, 0);
               return;
             }
+            // Rich paste (Wave 4.3): when the clipboard carries text/html — a
+            // copy from a web page, a doc, another editor — structure survives.
+            // The HTML is sanitised with DOMPurify to the block vocabulary
+            // (p/headings/lists/quote/code + inline marks) BEFORE parsing, so
+            // nothing untrusted ever enters the document tree, then converted
+            // to the same blocks the Markdown path produces.
+            var clipHTML = (e.clipboardData && e.clipboardData.getData('text/html')) || '';
+            if (clipHTML) {
+              var hparsed = parseHTMLBlocks(clipHTML);
+              if (hparsed.length) {
+                e.preventDefault();
+                blocks = blocks.slice(0, idx).concat(hparsed, blocks.slice(idx + 1));
+                structural();
+                var hlast = idx + hparsed.length - 1;
+                setTimeout(function () { focusBlock(hlast, true); }, 0);
+                return;
+              }
+            }
             // Multi-line paste onto an empty paragraph: parse the Markdown into
             // real blocks (headings, lists, quotes, code, dividers, paragraphs)
             // instead of dumping everything into one textarea. Single-line
@@ -1137,6 +1155,80 @@
   // (consecutive lines joined), fenced code (language kept), dividers; blank
   // lines split paragraphs and consecutive prose lines join into one paragraph.
   // Pure function — capped at 500 lines so a giant paste can never jank the UI.
+  // ── Rich paste (Wave 4.3) ──────────────────────────────────────────────────
+  // htmlInlineToMd converts an element's INLINE content to the Markdown the
+  // textareas already speak (strong/b → **, em/i → *, code → `, a → [t](href),
+  // br → newline). Unknown elements degrade to their text — structure is never
+  // invented from markup the editor cannot represent.
+  function htmlInlineToMd(node) {
+    var out = '';
+    Array.prototype.forEach.call(node.childNodes, function (ch) {
+      if (ch.nodeType === 3) { out += ch.nodeValue; return; }
+      if (ch.nodeType !== 1) return;
+      var tag = ch.tagName.toLowerCase();
+      var inner = htmlInlineToMd(ch);
+      if (tag === 'strong' || tag === 'b') { out += inner ? '**' + inner + '**' : ''; }
+      else if (tag === 'em' || tag === 'i') { out += inner ? '*' + inner + '*' : ''; }
+      else if (tag === 'code') { out += inner ? '`' + inner + '`' : ''; }
+      else if (tag === 'a') {
+        var href = ch.getAttribute('href') || '';
+        out += inner ? '[' + inner + '](' + href + ')' : '';
+      }
+      else if (tag === 'br') { out += '\n'; }
+      else { out += inner; }
+    });
+    return out;
+  }
+
+  // parseHTMLBlocks turns pasted text/html into editor blocks. DOMPurify runs
+  // FIRST with an allowlist of exactly the block vocabulary this editor has —
+  // anything outside it (style, img, script, tables, class attributes) is
+  // stripped before the tree is ever touched. Falls back to [] when DOMPurify
+  // is unavailable, in which case the paste falls through to plain-text
+  // handling: never parse unsanitised HTML just to preserve formatting.
+  function parseHTMLBlocks(html) {
+    if (!window.DOMPurify || !window.DOMPurify.sanitize) return [];
+    var clean = window.DOMPurify.sanitize(String(html || ''), {
+      ALLOWED_TAGS: ['p', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'strong', 'b', 'em', 'i', 'a', 'br'],
+      ALLOWED_ATTR: ['href'],
+      KEEP_CONTENT: true
+    });
+    var doc;
+    try { doc = new DOMParser().parseFromString(clean, 'text/html'); } catch (err) { return []; }
+    var out = [];
+    Array.prototype.forEach.call(doc.body.childNodes, function (n) {
+      if (n.nodeType === 3) {
+        var txt = (n.nodeValue || '').trim();
+        if (txt) out.push({ type: 'paragraph', text: txt });
+        return;
+      }
+      if (n.nodeType !== 1) return;
+      var tag = n.tagName.toLowerCase();
+      if (tag === 'p') {
+        var t = htmlInlineToMd(n).trim();
+        if (t) out.push({ type: 'paragraph', text: t });
+      } else if (tag === 'h1' || tag === 'h2' || tag === 'h3') {
+        var ht = htmlInlineToMd(n).trim();
+        if (ht) out.push({ type: 'heading', level: tag === 'h3' ? 3 : 2, text: ht });
+      } else if (tag === 'ul' || tag === 'ol') {
+        var items = [];
+        Array.prototype.forEach.call(n.children, function (li) {
+          if (li.tagName.toLowerCase() !== 'li') return;
+          var it = htmlInlineToMd(li).replace(/\s+/g, ' ').trim();
+          if (it) items.push(it);
+        });
+        if (items.length) out.push({ type: 'list', style: tag === 'ol' ? 'ordered' : 'unordered', items: items });
+      } else if (tag === 'blockquote') {
+        var q = htmlInlineToMd(n).trim();
+        if (q) out.push({ type: 'quote', text: q });
+      } else if (tag === 'pre') {
+        var code = (n.textContent || '').replace(/\n+$/, '');
+        if (code) out.push({ type: 'code', lang: '', text: code });
+      }
+    });
+    return out;
+  }
+
   function parseMarkdownBlocks(text) {
     var lines = String(text).replace(/\r\n?/g, '\n').split('\n').slice(0, 500);
     var out = [], i = 0, m;
@@ -1214,6 +1306,7 @@
     } else {
       el.selectionStart = el.selectionEnd = s + before.length; // caret between marks
     }
+    el.focus();
     el.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
@@ -1696,6 +1789,12 @@
         try { history.replaceState({}, '', '/os/editor/' + encodeURIComponent(slug)); } catch (e) {}
         if (typeof pmSet === 'function') { pmSet(pm['slug'], slug); syncSlugUI(); }
       }
+      // A successful create answers with the row's lifecycle state so the
+      // topbar pill appears immediately (new posts are born drafts).
+      if (data && data.postStatus) applyPostStatus(String(data.postStatus), false);
+      renderPubUI();
+      // Saved ⇒ nothing unsaved remains: drop the crash-recovery copy.
+      markClean();
       setStatus('Saved · ' + new Date().toLocaleTimeString(), 'ok');
       if (window.vpToast) window.vpToast('Post saved', 'ok');
     }).catch(function (err) {
@@ -1705,11 +1804,155 @@
 
   var autosaveTimer = null;
   function scheduleAutosave() {
+    // Every edit path funnels through here, so this is the single choke point
+    // for the dirty flag + crash-recovery backup (Wave 1).
+    dirty = true;
+    backupNow();
     if (!slug) return;
     setStatus('Editing…');
     if (autosaveTimer) clearTimeout(autosaveTimer);
     autosaveTimer = setTimeout(save, 2500);
   }
+
+  // ── Lifecycle: publish state, dirty flag, crash backup (Wave 1) ─────────────
+  // Saving must never publish: a brand-new post is born a draft server-side and
+  // the topbar control below is the ONLY way this surface flips the switch.
+  var postStatus = ''; // '' = unknown / never saved; otherwise 'draft' | 'published'
+  var pubStateEl = root.querySelector('[data-editor-pubstate]');
+  var pubBtn = root.querySelector('[data-editor-publish-btn]');
+
+  function applyPostStatus(next, announce) {
+    postStatus = (next === 'draft' || next === 'published') ? next : '';
+    renderPubUI();
+    if (announce && window.vpToast) {
+      window.vpToast(next === 'published' ? 'Post published' : 'Post unpublished — back to draft', next === 'published' ? 'ok' : 'warn');
+    }
+  }
+
+  function renderPubUI() {
+    if (!pubStateEl || !pubBtn) return;
+    if (!slug || !postStatus) { pubStateEl.hidden = true; pubBtn.hidden = true; return; }
+    pubStateEl.hidden = false;
+    pubBtn.hidden = false;
+    if (postStatus === 'published') {
+      pubStateEl.textContent = 'Published';
+      pubStateEl.classList.remove('is-draft');
+      pubStateEl.classList.add('is-published');
+      pubBtn.textContent = 'Unpublish';
+      pubBtn.setAttribute('title', 'Revert to draft — readers will no longer see this post');
+    } else {
+      pubStateEl.textContent = 'Draft';
+      pubStateEl.classList.remove('is-published');
+      pubStateEl.classList.add('is-draft');
+      pubBtn.textContent = 'Publish';
+      pubBtn.setAttribute('title', 'Publish to the live site');
+    }
+  }
+
+  function togglePublish() {
+    if (!slug || !postStatus || pubBtn.disabled) return;
+    var target = postStatus === 'published' ? 'draft' : 'published';
+    var prev = postStatus;
+    pubBtn.disabled = true;
+    setStatus(target === 'published' ? 'Publishing…' : 'Unpublishing…');
+    fetch('/os/api/posts/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
+      body: JSON.stringify({ slug: slug, status: target })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('status change failed (' + r.status + ')');
+      return r.json();
+    }).then(function () {
+      applyPostStatus(target, true);
+      setStatus(target === 'published' ? 'Published' : 'Draft', 'ok');
+    }).catch(function (err) {
+      applyPostStatus(prev, false);
+      setStatus(String(err.message || err), 'danger');
+      if (window.vpToast) window.vpToast('Could not change publish state', 'danger');
+    }).then(function () {
+      pubBtn.disabled = false;
+      renderPubUI();
+    });
+  }
+  if (pubBtn) pubBtn.addEventListener('click', togglePublish);
+
+  // Dirty flag + crash-recovery backup. Autosave deliberately waits until a slug
+  // exists, so everything typed into a brand-new post previously lived only in
+  // RAM — browser close, crash or accidental Back meant total loss (P0).
+  var dirty = false;
+  var BACKUP_KEY = 'vp-editor-autobackup';
+
+  function backupNow() {
+    try {
+      localStorage.setItem(BACKUP_KEY, JSON.stringify({
+        slug: slug || '',
+        title: titleEl ? titleEl.value : '',
+        blocks: blocks,
+        t: Date.now()
+      }));
+    } catch (e) { /* storage unavailable — the beforeunload guard still applies */ }
+  }
+
+  function markClean() {
+    dirty = false;
+    try { localStorage.removeItem(BACKUP_KEY); } catch (e) {}
+  }
+
+  window.addEventListener('beforeunload', function (e) {
+    if (!dirty) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
+  // Offer recovered work when the last backup belongs to THIS document (same
+  // slug, or both brand-new). DOM built with createElement/textContent only.
+  (function offerRecovery() {
+    var rawBak = null;
+    try { rawBak = localStorage.getItem(BACKUP_KEY); } catch (e) {}
+    if (!rawBak) return;
+    var bak = null;
+    try { bak = JSON.parse(rawBak); } catch (e2) { localStorage.removeItem(BACKUP_KEY); return; }
+    if (!bak || !Array.isArray(bak.blocks) || !bak.blocks.length) {
+      localStorage.removeItem(BACKUP_KEY);
+      return;
+    }
+    if ((bak.slug || '') !== (slug || '')) return; // another document's leftover
+    try {
+      if (JSON.stringify(bak.blocks) === JSON.stringify(blocks)) { markClean(); return; }
+    } catch (e3) {}
+    dirty = true;
+    var bar = document.createElement('div');
+    bar.className = 'editor-recover';
+    var msg = document.createElement('span');
+    msg.className = 'editor-recover__msg';
+    msg.textContent = 'Unsaved changes from an earlier session were found.';
+    var restoreBtn = document.createElement('button');
+    restoreBtn.type = 'button';
+    restoreBtn.className = 'btn btn--sm btn--primary';
+    restoreBtn.textContent = 'Restore';
+    var discardBtn = document.createElement('button');
+    discardBtn.type = 'button';
+    discardBtn.className = 'btn btn--sm btn--ghost';
+    discardBtn.textContent = 'Discard';
+    restoreBtn.addEventListener('click', function () {
+      blocks = bak.blocks;
+      if (bak.title && titleEl && !titleEl.value.trim()) titleEl.value = bak.title;
+      renderCanvas();
+      commitNow();
+      updateStats();
+      bar.parentNode.removeChild(bar);
+      setStatus('Recovered unsaved changes — remember to save', 'warn');
+    });
+    discardBtn.addEventListener('click', function () {
+      markClean();
+      if (bar.parentNode) bar.parentNode.removeChild(bar);
+    });
+    bar.appendChild(msg);
+    bar.appendChild(restoreBtn);
+    bar.appendChild(discardBtn);
+    var mainEl = root.querySelector('.editor-main') || root;
+    mainEl.insertBefore(bar, mainEl.firstChild);
+  })();
 
   // ── Preview (modal + split live pane) ───────────────────────────────────────
   // The server returns UGC-sanitised HTML (blockrender). To display rendered
@@ -2128,6 +2371,9 @@
     if (pm['featured']) pm['featured'].checked = !!data.featured;
     if (pm['is-page']) pm['is-page'].checked = !!data.isPage;
     if (pm['author'] && data.authorId) pmSet(pm['author'], data.authorId);
+    // The meta document carries the row's lifecycle state — surface it in the
+    // topbar (Wave 1: the editor previously hid status entirely).
+    applyPostStatus(typeof data.status === 'string' ? data.status : '', false);
     syncSlugUI();
     updateFeaturePreview();
     renderTags();
@@ -2293,15 +2539,11 @@
     if (el.tagName === 'INPUT' && el.classList.contains('eblock__heading')) return el;
     return null;
   }
-  function wrapSelection(el, pre, post) {
-    var s = el.selectionStart, e = el.selectionEnd, val = el.value;
-    var sel = val.slice(s, e);
-    el.value = val.slice(0, s) + pre + sel + post + val.slice(e);
-    var ns = s + pre.length;
-    el.setSelectionRange(ns, ns + sel.length);
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.focus();
-  }
+  // wrapSelection here was a SECOND declaration that hoisted over the canonical
+  // one at the top of the file, silently dropping its isLink support — which is
+  // how the documented ⌘K link flow broke (Wave 1 finding E8). Deleted; the
+  // floating toolbar's calls work unchanged against the canonical signature.
+
   function applyLink(el) {
     var s = el.selectionStart, e = el.selectionEnd, val = el.value;
     var sel = val.slice(s, e) || 'link text';
@@ -2427,6 +2669,72 @@
 
   if (saveBtn) saveBtn.addEventListener('click', save);
   if (previewBtn) previewBtn.addEventListener('click', preview);
+
+  // ── Share draft (Wave 4.4) ────────────────────────────────────────────────
+  // Mints a signed 48-hour preview link through the console endpoint and puts
+  // it on the clipboard. The post stays a draft: the link is the product, so
+  // the URL itself is shown in the toast when the clipboard is unavailable.
+  var shareBtn = root.querySelector('[data-editor-share-btn]');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', function () {
+      shareBtn.disabled = true;
+      fetch('/os/api/posts/' + encodeURIComponent(slug) + '/share', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': csrfToken() },
+        body: '{}',
+      })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          shareBtn.disabled = false;
+          if (!res.ok) {
+            var why = (res.d && (res.d.detail || res.d.title)) || 'Could not create a share link';
+            if (window.vpToast) window.vpToast(why, 'error');
+            return;
+          }
+          var url = res.d.url || '';
+          var done = function () {
+            if (window.vpToast) window.vpToast('Preview link copied — valid 48 hours, the post stays a draft.', 'ok');
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(done, function () {
+              if (window.vpToast) window.vpToast('Share link: ' + url, 'ok');
+            });
+          } else {
+            if (window.vpToast) window.vpToast('Share link: ' + url, 'ok');
+          }
+        })
+        .catch(function () { shareBtn.disabled = false; if (window.vpToast) window.vpToast('Network error', 'error'); });
+    });
+  }
+
+  // ── Device toggles (Wave 4.4) ─────────────────────────────────────────────
+  // The live preview can pretend to be a phone or a tablet, so an operator
+  // sees the responsive truth before publishing instead of after.
+  var livePane = root.querySelector('[data-editor-live]');
+  var liveHead = livePane ? livePane.querySelector('.editor-live-head') : null;
+  if (livePane && liveHead && !liveHead.querySelector('[data-device]')) {
+    var devWrap = document.createElement('span');
+    devWrap.className = 'editor-devices';
+    var setDevice = function (d) {
+      livePane.setAttribute('data-device', d);
+      Array.prototype.forEach.call(devWrap.children, function (b) {
+        b.setAttribute('aria-pressed', b.getAttribute('data-device') === d ? 'true' : 'false');
+      });
+    };
+    [['desktop', '🖥', 'Desktop'], ['tablet', '▭', 'Tablet'], ['mobile', '▯', 'Phone']].forEach(function (d) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'editor-devices__btn';
+      b.setAttribute('data-device', d[0]);
+      b.setAttribute('aria-pressed', d[0] === 'desktop' ? 'true' : 'false');
+      b.title = 'Preview at ' + d[2].toLowerCase() + ' width';
+      b.textContent = d[1];
+      b.addEventListener('click', function () { setDevice(d[0]); });
+      devWrap.appendChild(b);
+    });
+    liveHead.appendChild(devWrap);
+    setDevice('desktop');
+  }
 
   // ── Direct image upload (toolbar) ──────────────────────────────────────────
   // A first-class "Image" button: pick a file, upload it to /media, and insert

@@ -49,7 +49,10 @@ func mintingTestApp(t *testing.T) *App {
 	if err := dbpkg.Init(); err != nil {
 		t.Fatalf("db init: %v", err)
 	}
-	t.Cleanup(func() { _ = dbpkg.DB.Close() })
+	t.Cleanup(func() {
+		dbpkg.ClosePools()
+		_ = dbpkg.DB.Close()
+	})
 	_ = os.Unsetenv("VAYU_SECRET")
 	return &App{userStore: users.New(dbpkg.DB), sessions: auth.NewSessionStore(dbpkg.DB)}
 }

@@ -25,7 +25,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	dbpkg "github.com/johalputt/vayupress/internal/db"
 	"github.com/johalputt/vayupress/internal/domain"
@@ -207,8 +206,9 @@ if(add)add.addEventListener('click',function(){
 document.querySelectorAll('[data-scoped-release]').forEach(function(b){
   b.addEventListener('click',function(){
     var slug=b.getAttribute('data-slug');
-    if(!window.confirm('Move '+slug+' to the primary site? This site stops serving it.'))return;
-    move(slug,'primary',b);
+    vpConfirm({title:'Release to primary',message:'Move '+slug+' to the primary site? This site stops serving it.',confirm:'Release'},function(){
+      move(slug,'primary',b);
+    });
   });
 });
 })();
@@ -247,7 +247,10 @@ func (a *App) handleOSScopedContentNew(w http.ResponseWriter, r *http.Request) {
 	slug := a.uniqueArticleSlug(r.Context(), title)
 	// Article validation rejects empty content, so seed a single space: it
 	// renders to nothing and the author replaces it immediately.
-	if _, err := a.articles.Create(r.Context(), title, slug, " ", nil); err != nil {
+	// Draft-first (Wave 1): the status travels inside the queued insert itself,
+	// so the post is never briefly live between enqueue and the old follow-up
+	// UPDATE — and a failed follow-up can no longer leave it published.
+	if _, err := a.articles.CreateDraft(r.Context(), title, slug, " ", nil); err != nil {
 		writeAPIError(w, r, http.StatusInternalServerError, "create-failed", err.Error(), "")
 		return
 	}
@@ -257,14 +260,6 @@ func (a *App) handleOSScopedContentNew(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, r, http.StatusInternalServerError, "assign-failed",
 			"the draft was created but could not be assigned to this site: "+err.Error(), "")
 		return
-	}
-	// Draft, via the same UPDATE the post toggle uses. Best-effort: if it fails
-	// the post is still owned by this site, which is the part that matters, and
-	// the listing will show it as published so nothing is hidden.
-	if _, err := dbpkg.WDB.ExecContext(r.Context(),
-		`UPDATE articles SET status='draft', updated_at=? WHERE slug=?`, time.Now().UTC(), slug); err != nil {
-		dbpkg.AuditLog("vayudomains.content.new", dbpkg.AuditActor(r), d.Host,
-			slug+" created but could not be marked a draft")
 	}
 	render.CachePurgeAll()
 	dbpkg.AuditLog("vayudomains.content.new", dbpkg.AuditActor(r), d.Host, slug)

@@ -636,11 +636,12 @@ if(tBtn)tBtn.addEventListener('click',function(){
 });
 var dBtn=document.querySelector('[data-site-delete]');
 if(dBtn)dBtn.addEventListener('click',function(){
-  if(!window.confirm('Remove '+dBtn.getAttribute('data-host')+' from the registry? This cannot be undone.'))return;
+  vpConfirm({title:'Remove domain',message:'Remove '+dBtn.getAttribute('data-host')+' from the registry? This cannot be undone.',confirm:'Remove'},function(){
   dBtn.disabled=true;set('site-life-status','Removing…');
   fetch('/os/api/domains/'+encodeURIComponent(ID),{method:'DELETE',headers:{'X-CSRF-Token':csrf()}})
     .then(function(r){if(r.ok){location.href='/os/domains';}else{dBtn.disabled=false;set('site-life-status','Could not remove');}})
     .catch(function(e){dBtn.disabled=false;set('site-life-status','Error: '+e);});
+  });
 });
 })();
 </script>`
@@ -795,11 +796,12 @@ document.querySelectorAll('[data-dom-toggle]').forEach(function(b){
 });
 document.querySelectorAll('[data-dom-delete]').forEach(function(b){
   b.addEventListener('click',function(){
-    if(!window.confirm('Remove '+b.getAttribute('data-host')+' from the registry? This cannot be undone.'))return;
+    vpConfirm({title:'Remove domain',message:'Remove '+b.getAttribute('data-host')+' from the registry? This cannot be undone.',confirm:'Remove'},function(){
     b.disabled=true;show('Removing…');
     fetch('/os/api/domains/'+encodeURIComponent(b.getAttribute('data-id')),{method:'DELETE',headers:{'X-CSRF-Token':csrf()}})
       .then(function(r){if(r.ok){location.reload();}else{b.disabled=false;show('Could not remove');}})
       .catch(function(e){b.disabled=false;show('Error: '+e);});
+    });
   });
 });
 })();

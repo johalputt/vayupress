@@ -97,8 +97,16 @@ func processOneJob(workerID int) (empty bool) {
 	switch job.Op {
 	case "insert":
 		execErr = dbpkg.RunInTx(context.Background(), dbpkg.DB, func(tx *sql.Tx) error {
-			if _, err := tx.Exec(`INSERT INTO articles(id,title,slug,content,tags,created_at,updated_at,is_page) VALUES(?,?,?,?,?,?,?,?)`,
-				a.ID, a.Title, a.Slug, a.Content, strings.Join(a.Tags, ","), a.CreatedAt, a.UpdatedAt, boolToInt(a.IsPage)); err != nil {
+			// Persist the article's own status. Jobs enqueued before status
+			// travelled through the queue (or callers leaving it empty) keep the
+			// historical schema default 'published'; authoring surfaces pass
+			// "draft" explicitly (dashboard-upgrade Wave 1).
+			status := strings.TrimSpace(a.Status)
+			if status == "" {
+				status = "published"
+			}
+			if _, err := tx.Exec(`INSERT INTO articles(id,title,slug,content,tags,created_at,updated_at,is_page,status) VALUES(?,?,?,?,?,?,?,?,?)`,
+				a.ID, a.Title, a.Slug, a.Content, strings.Join(a.Tags, ","), a.CreatedAt, a.UpdatedAt, boolToInt(a.IsPage), status); err != nil {
 				return err
 			}
 			// Keep the indexed tag-membership table in sync within the same tx.
@@ -115,6 +123,19 @@ func processOneJob(workerID int) (empty bool) {
 		}
 	case "update":
 		execErr = dbpkg.RunInTx(context.Background(), dbpkg.DB, func(tx *sql.Tx) error {
+			// Snapshot the row we are about to overwrite so the editor's History
+			// modal has real data (dashboard-upgrade Wave 1: versions were dead
+			// plumbing — nothing ever wrote one). Best-effort: a snapshot failure
+			// must never block the update itself.
+			var vID, vTitle, vContent, vTags string
+			if err := tx.QueryRow(`SELECT id,title,content,COALESCE(tags,'') FROM articles WHERE slug=?`, a.Slug).Scan(&vID, &vTitle, &vContent, &vTags); err == nil {
+				if _, err := tx.Exec(`INSERT INTO article_versions(article_id,slug,title,content,tags,label) VALUES(?,?,?,?,?,?)`,
+					vID, a.Slug, vTitle, vContent, vTags, "pre-update"); err != nil {
+					logging.LogError("worker", "version snapshot failed for "+a.Slug, err.Error())
+				}
+			} else if err != sql.ErrNoRows {
+				logging.LogError("worker", "version snapshot read failed for "+a.Slug, err.Error())
+			}
 			if _, err := tx.Exec(`UPDATE articles SET title=?,content=?,tags=?,updated_at=? WHERE slug=?`,
 				a.Title, a.Content, strings.Join(a.Tags, ","), a.UpdatedAt, a.Slug); err != nil {
 				return err

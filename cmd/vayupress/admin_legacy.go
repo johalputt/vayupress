@@ -26,6 +26,10 @@ func legacyToOSPath(p string) string {
 	switch {
 	case p == "/admin", p == "/admin/v2", p == "/admin/v3":
 		return "/os"
+	case p == "/admin/theme":
+		// Wave 2.7: the classic theme editor is retired in favour of the
+		// VayuOS Theme page at the same conceptual address.
+		return "/os/theme"
 	case strings.HasPrefix(p, "/admin/v2/"):
 		return "/os/" + strings.TrimPrefix(p, "/admin/v2/")
 	case strings.HasPrefix(p, "/admin/v3/"):

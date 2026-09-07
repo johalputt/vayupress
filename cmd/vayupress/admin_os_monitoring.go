@@ -169,7 +169,7 @@ func (a *App) handleOSMonitoring(w http.ResponseWriter, r *http.Request) {
 
 	body := `<div class="page-header">
   <h1>Monitoring</h1>
-  <div class="page-actions">` + monUpdatedStamp(time.Now(), false) + `</div>
+  <div class="page-actions">` + monUpdatedStamp(time.Now(), a.nowSnapAge(), false) + `</div>
 </div>
 <p class="page-sub">A live view of your running install — performance, background jobs, storage and budgets, refreshed as you watch.</p>` + poller + modeCard + perf + storageJobs + writer + budgetsCard + consoles
 

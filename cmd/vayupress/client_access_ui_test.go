@@ -33,7 +33,12 @@ func newTestUserStore(t *testing.T) *users.Store {
 		t.Fatalf("db init: %v", err)
 	}
 	db := dbpkg.DB
-	t.Cleanup(func() { _ = db.Close() })
+	// ClosePools first: on Windows the pool connections keep clients.db open and
+	// the t.TempDir RemoveAll fails after the assertions have already passed.
+	t.Cleanup(func() {
+		dbpkg.ClosePools()
+		_ = db.Close()
+	})
 	return users.New(db)
 }
 

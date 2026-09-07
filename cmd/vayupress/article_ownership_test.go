@@ -64,7 +64,10 @@ func ownershipApp(t *testing.T) *App {
 	if err := dbpkg.Init(); err != nil {
 		t.Fatalf("db init: %v", err)
 	}
-	t.Cleanup(func() { _ = dbpkg.DB.Close() })
+	t.Cleanup(func() {
+		dbpkg.ClosePools()
+		_ = dbpkg.DB.Close()
+	})
 	// handleOSEditorSave / handleOSPostDelete fire CachePurge, whose async
 	// sitemap/feed/robots regenerations read config.Cfg.CacheDir on a background
 	// goroutine. Registered LAST so it runs FIRST at teardown (LIFO): drain those

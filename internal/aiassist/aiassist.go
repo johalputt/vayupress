@@ -470,6 +470,11 @@ func buildPrompt(op, text string) (string, bool) {
 		return "Improve the clarity, grammar, and flow of the following text " +
 			"without changing its meaning or adding new facts. Return only the " +
 			"revised text.\n\n" + text, true
+	case "rewrite":
+		// The editor's slash palette sends op "rewrite" (admin-os-editor.js
+		// AI_CMDS); before Wave 1 this fell through to unsupported and every
+		// click failed. Rewrite IS improve-clarity — map it instead of failing.
+		return buildPrompt(OpImprove, text)
 	case OpTitles:
 		return "Suggest 5 concise, compelling title options for the following " +
 			"article. Return them as a numbered list, nothing else.\n\n" + text, true

@@ -100,11 +100,16 @@ func TestMemberLogoutEndsTheOperatorIdentityToo(t *testing.T) {
 // readSourceFile loads a file from this package for a structural assertion. These
 // are auth invariants that are cheaper to pin at the source than to reconstruct
 // through a full HTTP stack with two cooperating session stores.
+//
+// CRLF is normalised to LF: a checkout whose files were saved with Windows line
+// endings never contains the "\n}\n"-style markers these structural tests slice
+// on, and every extraction then failed with "X is gone from Y" — reporting a
+// refactor that never happened.
 func readSourceFile(t *testing.T, name string) string {
 	t.Helper()
 	b, err := os.ReadFile(name)
 	if err != nil {
 		t.Fatalf("read %s: %v", name, err)
 	}
-	return string(b)
+	return strings.ReplaceAll(string(b), "\r\n", "\n")
 }

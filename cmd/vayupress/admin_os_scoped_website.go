@@ -290,16 +290,33 @@ func scopedWebsitePage(d domain.Domain, tplKey string, c bizsite.Content, bundle
 			`<input type="text" class="input" id="` + id + `" value="` + esc(val) + `" autocomplete="off">` +
 			`<span class="field-hint">` + esc(hint) + `</span></label>`
 	}
+	// areaField renders one of the MULTI-LINE content fields.
+	//
+	// WHY A TEXTAREA AND NEVER AN <input type=text>: a browser applies the HTML
+	// "value sanitization algorithm" to every single-line input, which STRIPS
+	// line breaks from its value. Hours stored as "Tue–Sun 18:00–23:00\nClosed
+	// Mondays" therefore reached this form already collapsed to
+	// "...23:00Closed Mondays", and the next Save & publish persisted that
+	// mangled string over the good one — exactly how vayupress.johal.in lost the
+	// second line of its hours while .vb-hours (white-space:pre-line) was still
+	// rendering from a newline nobody's editor could hold. Hours, address and
+	// about are line-oriented fields BY DESIGN; they must only ever be edited
+	// through an element whose value can carry "\n". Keep them textareas even if
+	// this page is restyled; the ordinary single-line fields below stay inputs,
+	// where nothing multi-line can be lost.
+	areaField := func(id, label, hint, val string, rows int) string {
+		return `<label class="field"><span class="field-label">` + esc(label) + `</span>` +
+			`<textarea class="input" id="` + id + `" rows="` + itoaSafe(rows) + `">` + esc(val) + `</textarea>` +
+			`<span class="field-hint">` + esc(hint) + `</span></label>`
+	}
 	con.WriteString(`<div class="card"><div class="form-grid">`)
 	con.WriteString(field("web-name", "Business name", "The name across the top of the site.", c.Name))
 	con.WriteString(field("web-tagline", "Tagline", "One line under the name.", c.Tagline))
-	con.WriteString(`<label class="field"><span class="field-label">About</span>` +
-		`<textarea class="input" id="web-about" rows="4">` + esc(c.About) + `</textarea>` +
-		`<span class="field-hint">A paragraph or two. Plain text.</span></label>`)
+	con.WriteString(areaField("web-about", "About", "A paragraph or two — one per line. Line breaks are kept.", c.About, 4))
 	con.WriteString(field("web-phone", "Phone", "Optional.", c.Phone))
 	con.WriteString(field("web-email", "Email", "Optional.", c.Email))
-	con.WriteString(field("web-address", "Address", "Optional.", c.Address))
-	con.WriteString(field("web-hours", "Opening hours", "Optional.", c.Hours))
+	con.WriteString(areaField("web-address", "Address", "Optional — one line per row. Line breaks are kept.", c.Address, 2))
+	con.WriteString(areaField("web-hours", "Opening hours", "One range per line, e.g. Tue–Sun 18:00–23:00. Line breaks are kept.", c.Hours, 3))
 	con.WriteString(field("web-cta", "Button label", "The hero button, e.g. “Book a table”.", c.CTA))
 	con.WriteString(field("web-ctalink", "Button link", "Where the hero button goes.", c.CTALink))
 	con.WriteString(field("web-heroimg", "Hero image URL", "Optional. Left blank, the template's own art is used.", c.HeroImg))
@@ -422,13 +439,14 @@ if(up)up.addEventListener('click',function(){
 });
 var rb=document.querySelector('[data-bundle-rollback]');
 if(rb)rb.addEventListener('click',function(){
-  if(!window.confirm('Restore the previous uploaded website?'))return;
+  vpConfirm({title:'Roll back website',message:'Restore the previous uploaded website? The current bundle is replaced.',confirm:'Roll back'},function(){
   rb.disabled=true; if(st)st.textContent='Restoring\u2026';
   fetch('/os/d/'+encodeURIComponent(ID)+'/api/website/bundle/rollback',{method:'POST',
     headers:{'X-CSRF-Token':csrf()}})
     .then(function(r){if(r.ok){window.location.reload();return;}
       rb.disabled=false; if(st)st.textContent='Could not restore';})
     .catch(function(e){rb.disabled=false; if(st)st.textContent='Error: '+e;});
+  });
 });
 })();
 </script>`

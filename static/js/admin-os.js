@@ -46,6 +46,29 @@ function cookie(name) {
   return row ? row.slice(name.length + 1) : '';
 }
 
+/* ── Shared JSON POST (Wave 3.11) ──────────────────────────────
+   window.vpPost: one CSRF-carrying JSON POST helper for the console. The
+   per-page inline scripts have their own (ops-block) variant that reloads on
+   success; this one takes callbacks and never reloads, so island-style
+   handlers can update in place. Every error path toasts — a silent catch is a
+   lie by omission. */
+window.vpPost = function (url, body, onok, onerr) {
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': cookie('vp_csrf') },
+    body: JSON.stringify(body || {}),
+  })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      if (res.ok) { if (onok) onok(res.d); return; }
+      var msg = (res.d && (res.d.detail || res.d.title || res.d.error || res.d.message)) || 'Request failed';
+      if (onerr) onerr(res.d, msg); else toast(msg, 'error');
+    })
+    .catch(function (e) {
+      if (onerr) onerr(null, String(e)); else toast('Network error', 'error');
+    });
+};
+
 /* ── Toast system ────────────────────────────────────────────── */
 function toast(msg, kind) {
   kind = kind || 'info';
@@ -230,6 +253,27 @@ window.vpToast = toast;
     stackTablesIn(e.target || document);
   });
 
+/* ── Client-side action registry (Wave 1: palette actions moved off
+     window[fn] string lookup into a small explicit map). */
+window.vpActions = {
+  newPost: function () { location.href = '/os/editor'; },
+  goSEO: function () { location.href = '/os/seo'; },
+  regenSEO: function () {
+    fetch('/os/api/seo/regenerate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
+      body: JSON.stringify({})
+    }).then(function (r) {
+      if (!r.ok) throw new Error('SEO regen failed (' + r.status + ')');
+      return r.json();
+    }).then(function () {
+      if (window.vpToast) window.vpToast('Sitemap, RSS & robots regenerated', 'ok');
+    }).catch(function (err) {
+      if (window.vpToast) window.vpToast('Could not regenerate: ' + err.message, 'danger');
+    });
+  }
+};
+
 /* ── Command palette (Cmd+K / Ctrl+K) ───────────────────────── */
 (function initCommandPalette() {
   var backdrop = $('#cmd-backdrop');
@@ -277,13 +321,13 @@ window.vpToast = toast;
   function loadIndex() {
     if (index !== null) return;
     var cached = null;
-    try { cached = JSON.parse(sessionStorage.getItem('vp3_cmd_index_' + Date.now().toString().slice(0, -4))); } catch (e) {}
+    try { cached = JSON.parse(sessionStorage.getItem('vp3_cmd_index_v1')); } catch (e) {}
     if (cached) { index = cached; return; }
     fetch('/os/api/cmd-index')
       .then(function (r) { return r.json(); })
       .then(function (data) {
         index = data;
-        try { sessionStorage.setItem('vp3_cmd_index_' + Date.now().toString().slice(0, -4), JSON.stringify(data)); } catch (e) {}
+        try { sessionStorage.setItem('vp3_cmd_index_v1', JSON.stringify(data)); } catch (e) {}
         render(input.value);
       })
       .catch(function () { index = { posts: [], actions: [], settings: [] }; });
@@ -346,7 +390,12 @@ window.vpToast = toast;
         }
 
         if (!sec.href && item.fn) {
-          el.addEventListener('click', function () { close(); window[item.fn] && window[item.fn](); });
+          el.addEventListener('click', function () {
+            close();
+            var fn = window.vpActions && window.vpActions[item.fn];
+            if (typeof fn === 'function') { fn(); return; }
+            if (item.href) location.href = item.href;
+          });
         } else {
           el.addEventListener('click', close);
         }
@@ -378,23 +427,11 @@ window.vpToast = toast;
   }
 })();
 
-/* ── Posts search (client-side) ──────────────────────────────── */
-(function initPostsSearch() {
-  var input = $('[data-posts-search]');
-  if (!input) return;
-  var empty = $('[data-search-empty]');
-  input.addEventListener('input', function () {
-    var q = input.value.toLowerCase().trim();
-    var rows = $$('[data-post-row]');
-    var visible = 0;
-    rows.forEach(function (row) {
-      var match = !q || (row.dataset.search || '').includes(q);
-      row.hidden = !match;
-      if (match) visible++;
-    });
-    if (empty) empty.hidden = visible > 0 || !q;
-  });
-})();
+/* ── Posts search (client-side) ────────────────────────────────
+   Removed (Wave 3.11): the HTMX server-side search replaced this, and its
+   input hooks no longer exist in the Go templates — a handler for a selector
+   nothing renders is dead weight that pretends a feature exists. The
+   selector-parity test pins this. */
 
 /* ── Quick compose ───────────────────────────────────────────── */
 (function initQuickCompose() {
@@ -454,45 +491,73 @@ window.vpRelTime = relativeTime;
 (function initActivityFeed() {
   var feed = $('#activity-feed');
   if (!feed) return;
-  fetch('/os/api/activity')
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      feed.innerHTML = '';
-      if (!data || !data.length) {
-        var empty = document.createElement('div');
-        empty.className = 'table-empty';
-        empty.textContent = 'No recent activity.';
-        feed.appendChild(empty);
-        return;
-      }
-      data.forEach(function (item) {
-        var row = document.createElement('div');
-        row.className = 'activity-item';
+(function initActivityFeed() {
+  var feed = $('#activity-feed');
+  if (!feed) return;
+  var feedTimer = null;
 
-        var icon = document.createElement('div');
-        icon.className = 'activity-icon activity-icon--' + (item.kind || 'system');
-        icon.textContent = item.icon || '·';
-        icon.setAttribute('aria-hidden', 'true');
+  function renderError() {
+    feed.innerHTML = '';
+    var err = document.createElement('div');
+    err.className = 'table-empty';
+    err.textContent = 'Activity feed is unavailable right now — it will retry shortly.';
+    feed.appendChild(err);
+  }
 
-        var body = document.createElement('div');
-        body.className = 'activity-body';
+  function loadFeed() {
+    fetch('/os/api/activity')
+      .then(function (r) { if (!r.ok) throw new Error('feed ' + r.status); return r.json(); })
+      .then(function (data) {
+        feed.innerHTML = '';
+        if (!data || !data.length) {
+          var empty = document.createElement('div');
+          empty.className = 'table-empty';
+          empty.textContent = 'No recent activity.';
+          feed.appendChild(empty);
+          return;
+        }
+        data.forEach(function (item) {
+          // Every row that knows where the work happens is a link to it —
+          // a feed you cannot act on is a log, not a feed.
+          var row = document.createElement(item.href ? 'a' : 'div');
+          row.className = 'activity-item';
+          if (item.href) row.href = item.href;
 
-        var text = document.createElement('div');
-        text.className = 'activity-text';
-        text.textContent = item.text || '';
+          var icon = document.createElement('div');
+          icon.className = 'activity-icon activity-icon--' + (item.kind || 'system');
+          icon.textContent = item.icon || '·';
+          icon.setAttribute('aria-hidden', 'true');
 
-        var time = document.createElement('div');
-        time.className = 'activity-time';
-        time.textContent = item.time ? relativeTime(item.time) : '';
+          var body = document.createElement('div');
+          body.className = 'activity-body';
 
-        body.appendChild(text);
-        body.appendChild(time);
-        row.appendChild(icon);
-        row.appendChild(body);
-        feed.appendChild(row);
-      });
-    })
-    .catch(function () {});
+          var text = document.createElement('div');
+          text.className = 'activity-text';
+          text.textContent = item.text || '';
+
+          var time = document.createElement('div');
+          time.className = 'activity-time';
+          time.textContent = item.time ? relativeTime(item.time) : '';
+
+          body.appendChild(text);
+          body.appendChild(time);
+          row.appendChild(icon);
+          row.appendChild(body);
+          feed.appendChild(row);
+        });
+      })
+      .catch(renderError);
+  }
+
+  loadFeed();
+  // Relative timestamps go stale in place ("just now" for an hour); re-render
+  // every minute so the words always match the clock.
+  feedTimer = setInterval(loadFeed, 60000);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && feedTimer) {
+      loadFeed();
+    }
+  });
 })();
 
 /* ── Settings toggle rows ────────────────────────────────────── */
@@ -500,18 +565,7 @@ $$('[data-setting-key]').forEach(function (el) {
   el.addEventListener('change', function () {
     var key = el.dataset.settingKey;
     var val = el.type === 'checkbox' ? (el.checked ? 'true' : 'false') : el.value;
-    var csrf = cookie('vp_csrf');
-    fetch('/os/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-      body: JSON.stringify({ key: key, value: val }),
-    })
-    .then(function (r) { return r.ok ? null : r.json(); })
-    .then(function (err) {
-      if (err) toast('Error saving setting', 'error');
-      else toast('Saved', 'ok');
-    })
-    .catch(function () { toast('Network error', 'error'); });
+    vpPost('/os/api/settings', { key: key, value: val }, function () { toast('Saved', 'ok'); }, function () { toast('Error saving setting', 'error'); });
   });
 });
 
@@ -585,12 +639,7 @@ $$('[data-setting-key]').forEach(function (el) {
       altI.addEventListener('blur', function () {
         if (altI.value === (item.alt || '')) return;
         item.alt = altI.value;
-        fetch('/os/api/media/alt', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': cookie('vp_csrf') },
-          body: JSON.stringify({ name: item.name, alt: altI.value }),
-        }).then(function (r) { toast(r.ok ? 'Alt text saved' : 'Could not save alt', r.ok ? 'ok' : 'error'); })
-          .catch(function () { toast('Network error', 'error'); });
+        vpPost('/os/api/media/alt', { name: item.name, alt: altI.value }, function () { toast('Alt text saved', 'ok'); }, function () { toast('Could not save alt', 'error'); });
       });
       meta.appendChild(altI);
     }
@@ -673,17 +722,22 @@ $$('[data-setting-key]').forEach(function (el) {
   if (delBtn) delBtn.addEventListener('click', function () {
     var names = selectedNames();
     if (!names.length) return;
-    if (!window.confirm('Delete ' + names.length + ' file' + (names.length > 1 ? 's' : '') + '? This cannot be undone.')) return;
-    delBtn.disabled = true;
-    fetch('/os/api/media/delete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': cookie('vp_csrf') },
-      body: JSON.stringify({ names: names }),
-    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
-        if (res.ok) { toast('Deleted ' + (res.j.deleted || 0), 'ok'); load(); }
-        else { delBtn.disabled = false; toast('Delete failed', 'error'); }
-      }).catch(function () { delBtn.disabled = false; toast('Network error', 'error'); });
+    vpConfirm({
+      title: 'Delete files',
+      message: 'Delete ' + names.length + ' file' + (names.length > 1 ? 's' : '') + '? This cannot be undone.',
+      confirm: 'Delete',
+    }, function () {
+      delBtn.disabled = true;
+      fetch('/os/api/media/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': cookie('vp_csrf') },
+        body: JSON.stringify({ names: names }),
+      }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (res.ok) { toast('Deleted ' + (res.j.deleted || 0), 'ok'); load(); }
+          else { delBtn.disabled = false; toast('Delete failed', 'error'); }
+        }).catch(function () { delBtn.disabled = false; toast('Network error', 'error'); });
+    });
   });
 
   function upload(file) {
@@ -945,3 +999,59 @@ $$('[data-setting-key]').forEach(function (el) {
 })();
 
 })(); // end IIFE
+
+/* ── Keyboard layer (Wave 3.7) ────────────────────────────────
+   j/k move through the post rows, x toggles the highlighted row's bulk select,
+   Enter opens the highlighted row, n starts a new post (or focuses quick
+   compose on the dashboard). Only fires when a post list exists; never fires
+   while typing, inside a form field, or with a modifier held. */
+(function initKeyboardLayer() {
+  var rows = function () { return $$('.post-row [data-post-row], [data-post-row]').filter(function (r) { return !r.hidden; }); };
+  var idx = -1;
+  function highlight(next) {
+    var list = rows();
+    if (!list.length) return;
+    if (idx >= 0 && list[idx]) list[idx].classList.remove('post-row--kbd');
+    idx = (next + list.length) % list.length;
+    var row = list[idx];
+    row.classList.add('post-row--kbd');
+    var sum = row.querySelector('summary');
+    if (sum) sum.scrollIntoView({ block: 'nearest' });
+  }
+  function isTyping(el) {
+    if (!el) return false;
+    var tag = (el.tagName || '').toLowerCase();
+    return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (isTyping(e.target)) return;
+    var list = rows();
+    var hasList = list.length > 0;
+    var composer = $('#quick-compose-input');
+    if (e.key === 'n') {
+      // n = "new post": focus quick compose where it exists, otherwise open the editor.
+      if (composer) { e.preventDefault(); composer.focus(); }
+      else { window.location.href = '/os/editor'; }
+      return;
+    }
+    if (!hasList) return;
+    switch (e.key) {
+      case 'j': e.preventDefault(); highlight(idx + 1); break;
+      case 'k': e.preventDefault(); highlight(idx - 1); break;
+      case 'x':
+        if (idx < 0 || !list[idx]) return;
+        e.preventDefault();
+        var chk = list[idx].querySelector('[data-post-select]');
+        if (chk) { chk.checked = !chk.checked; chk.dispatchEvent(new Event('change', { bubbles: true })); }
+        break;
+      case 'Enter':
+        if (idx < 0 || !list[idx]) return;
+        e.preventDefault();
+        var sum = list[idx].querySelector('summary');
+        if (sum) sum.click();
+        break;
+    }
+  });
+})();
+})();

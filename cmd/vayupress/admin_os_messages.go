@@ -198,11 +198,12 @@ document.querySelectorAll('[data-msg-read]').forEach(function(b){
 });
 document.querySelectorAll('[data-msg-delete]').forEach(function(b){
   b.addEventListener('click',function(){
-    if(!window.confirm('Delete this message? This cannot be undone.'))return;
+    vpConfirm({title:'Delete message',message:'Delete this message? This cannot be undone.',confirm:'Delete'},function(){
     b.disabled=true;show('Deleting…');
     fetch('/os/api/messages/'+encodeURIComponent(b.getAttribute('data-id')),{method:'DELETE',headers:{'X-CSRF-Token':csrf()}})
       .then(function(r){if(r.ok){var row=b.closest('[data-msg-row]');if(row)row.remove();show('Deleted');}else{b.disabled=false;show('Could not delete');}})
       .catch(function(e){b.disabled=false;show('Error: '+e);});
+    });
   });
 });
 var readAll=document.querySelector('[data-msg-readall]');
@@ -214,11 +215,12 @@ if(readAll)readAll.addEventListener('click',function(){
 });
 var delRead=document.querySelector('[data-msg-deleteread]');
 if(delRead)delRead.addEventListener('click',function(){
-  if(!window.confirm('Delete all messages already marked read? This cannot be undone.'))return;
+  vpConfirm({title:'Clear read messages',message:'Delete all messages already marked read? This cannot be undone.',confirm:'Delete read'},function(){
   delRead.disabled=true;show('Clearing read…');
   fetch('/os/api/messages/delete-read',{method:'POST',headers:{'X-CSRF-Token':csrf()}})
     .then(function(r){if(r.ok){location.reload();}else{delRead.disabled=false;show('Could not clear');}})
     .catch(function(e){delRead.disabled=false;show('Error: '+e);});
+  });
 });
 })();
 </script>`
@@ -299,11 +301,12 @@ func (a *App) handleOSMessageDetail(w http.ResponseWriter, r *http.Request) {
 function csrf(){var m=document.cookie.match(/(?:^|;\s*)vp_csrf=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
 var b=document.querySelector('[data-msg-detail-delete]');
 if(b)b.addEventListener('click',function(){
-  if(!window.confirm('Delete this message? This cannot be undone.'))return;
+  vpConfirm({title:'Delete message',message:'Delete this message? This cannot be undone.',confirm:'Delete'},function(){
   b.disabled=true;
   fetch('/os/api/messages/'+encodeURIComponent(b.getAttribute('data-id')),{method:'DELETE',headers:{'X-CSRF-Token':csrf()}})
     .then(function(r){if(r.ok){window.location.href='/os/messages';}else{b.disabled=false;var s=document.getElementById('msg-status');if(s)s.textContent='Could not delete';}})
     .catch(function(e){b.disabled=false;var s=document.getElementById('msg-status');if(s)s.textContent='Error: '+e;});
+  });
 });
 })();
 </script>`

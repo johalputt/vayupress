@@ -32,7 +32,10 @@ func setupSEOTestDB(t *testing.T) string {
 	if err := dbpkg.Init(); err != nil {
 		t.Fatalf("db init: %v", err)
 	}
-	t.Cleanup(func() { dbpkg.DB.Close() })
+	t.Cleanup(func() {
+		dbpkg.ClosePools()
+		_ = dbpkg.DB.Close()
+	})
 
 	repo := dbpkg.NewArticleRepo(dbpkg.DB)
 	ctx := context.Background()

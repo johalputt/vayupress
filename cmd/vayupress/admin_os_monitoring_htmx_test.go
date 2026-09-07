@@ -72,14 +72,22 @@ func TestMonFragmentsCSPSafeAndOOB(t *testing.T) {
 		t.Errorf("OOB budget pill missing hx-swap-oob:\n%s", bp)
 	}
 
-	// Updated stamp.
-	stamp := monUpdatedStamp(time.Date(2024, 1, 2, 9, 4, 5, 0, time.UTC), false)
+	// Updated stamp. With a snapshot age the stamp says how old the numbers are;
+	// with none (-1) it omits the age rather than inventing one.
+	stamp := monUpdatedStamp(time.Date(2024, 1, 2, 9, 4, 5, 0, time.UTC), 12*time.Second, false)
 	assertCSPSafe(t, "updated stamp", stamp)
 	if !strings.Contains(stamp, `id="mon-updated"`) || !strings.Contains(stamp, "updated 09:04:05") {
 		t.Errorf("stamp wrong:\n%s", stamp)
 	}
+	if !strings.Contains(stamp, "metrics 12s old") {
+		t.Errorf("stamp must carry the honest snapshot age:\n%s", stamp)
+	}
 	if strings.Contains(stamp, "hx-swap-oob") {
 		t.Errorf("inline stamp must not be OOB:\n%s", stamp)
+	}
+	ageless := monUpdatedStamp(time.Date(2024, 1, 2, 9, 4, 5, 0, time.UTC), -1, false)
+	if strings.Contains(ageless, "metrics") {
+		t.Errorf("stamp must not invent a snapshot age when none exists:\n%s", ageless)
 	}
 }
 

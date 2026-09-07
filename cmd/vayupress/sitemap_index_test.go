@@ -38,7 +38,10 @@ func TestSitemapIndexCoversEveryPost(t *testing.T) {
 	if err := dbpkg.Init(); err != nil {
 		t.Fatalf("db init: %v", err)
 	}
-	t.Cleanup(func() { dbpkg.DB.Close() })
+	t.Cleanup(func() {
+		dbpkg.ClosePools()
+		_ = dbpkg.DB.Close()
+	})
 
 	// Shrink the chunk so the boundary is reachable: 7 posts over chunks of 3
 	// means three children, the last one partial.

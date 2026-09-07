@@ -35,7 +35,10 @@ func TestMemberMeRecognisesOperator(t *testing.T) {
 	if err := dbpkg.Init(); err != nil {
 		t.Fatalf("db init: %v", err)
 	}
-	t.Cleanup(func() { dbpkg.DB.Close() })
+	t.Cleanup(func() {
+		dbpkg.ClosePools()
+		_ = dbpkg.DB.Close()
+	})
 
 	a := &App{
 		userStore: users.New(dbpkg.DB),
@@ -91,7 +94,10 @@ func TestMemberSnapshotAvatar(t *testing.T) {
 	if err := dbpkg.Init(); err != nil {
 		t.Fatalf("db init: %v", err)
 	}
-	t.Cleanup(func() { dbpkg.DB.Close() })
+	t.Cleanup(func() {
+		dbpkg.ClosePools()
+		_ = dbpkg.DB.Close()
+	})
 
 	a := &App{userStore: users.New(dbpkg.DB)}
 	ctx := context.Background()
@@ -132,7 +138,10 @@ func TestResolveCommenterRecognisesOperator(t *testing.T) {
 	if err := dbpkg.Init(); err != nil {
 		t.Fatalf("db init: %v", err)
 	}
-	t.Cleanup(func() { dbpkg.DB.Close() })
+	t.Cleanup(func() {
+		dbpkg.ClosePools()
+		_ = dbpkg.DB.Close()
+	})
 
 	// a.members is nil, so resolveMember returns nil and resolveCommenter must fall
 	// through to the console-operator session — the exact path that used to fail.

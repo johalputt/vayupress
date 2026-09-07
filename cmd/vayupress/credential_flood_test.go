@@ -263,7 +263,12 @@ func credentialFloodApp(t *testing.T) *App {
 	if err := dbpkg.Init(); err != nil {
 		t.Fatalf("db init: %v", err)
 	}
-	t.Cleanup(func() { _ = dbpkg.DB.Close() })
+	// ClosePools first: on Windows the pool connections keep flood.db open and
+	// the t.TempDir RemoveAll fails after the assertions have already passed.
+	t.Cleanup(func() {
+		dbpkg.ClosePools()
+		_ = dbpkg.DB.Close()
+	})
 
 	cfg := vmail.DefaultConfig()
 	cfg.Enabled = true

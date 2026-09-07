@@ -186,8 +186,19 @@ func TestDeviceResetEndpointIsUniformlyOpaque(t *testing.T) {
 func TestDeviceResetGatesOnStatusNotLastUsed(t *testing.T) {
 	t.Parallel()
 	src := repoFile(t, "internal/vayuos/mail/recovery.go")
-	fn := src[strings.Index(src, "func (s *AccountStore) VerifyApprovedDevice"):]
-	fn = fn[:strings.Index(fn, "\n}\n")]
+	start := strings.Index(src, "func (s *AccountStore) VerifyApprovedDevice")
+	if start < 0 {
+		t.Fatal("VerifyApprovedDevice not found in recovery.go")
+	}
+	// Normalise CRLF before slicing: a checkout whose file uses \r\n never
+	// contains the "\n}\n" marker, and an unguarded strings.Index here used to
+	// panic (slice from -1) instead of reporting the drift as a failure.
+	fn := strings.ReplaceAll(src[start:], "\r\n", "\n")
+	end := strings.Index(fn, "\n}\n")
+	if end < 0 {
+		t.Fatal("could not find the end of VerifyApprovedDevice")
+	}
+	fn = fn[:end]
 	if strings.Contains(fn, "last_used_at") || strings.Contains(fn, "LastUsed") {
 		t.Error("recovery gates on last-used telemetry; a missed write would lock out a real holder")
 	}

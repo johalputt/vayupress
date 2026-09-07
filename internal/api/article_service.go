@@ -67,7 +67,15 @@ type BulkCreateItem struct {
 
 // Create validates and enqueues a new blog post.
 func (s *ArticleService) Create(ctx context.Context, title, slug, content string, tags []string) (CreateResult, error) {
-	return s.create(ctx, title, slug, content, tags, false)
+	return s.create(ctx, title, slug, content, tags, false, "published")
+}
+
+// CreateDraft is the authoring-surface create: VayuOS's editor and quick-compose
+// use it so a brand-new post is born a DRAFT and publishing stays a deliberate
+// act (dashboard-upgrade Wave 1). The public API, MCP tools and the scheduler
+// keep using Create — their published-by-default contract is unchanged.
+func (s *ArticleService) CreateDraft(ctx context.Context, title, slug, content string, tags []string) (CreateResult, error) {
+	return s.create(ctx, title, slug, content, tags, false, "draft")
 }
 
 // CreatePage validates and enqueues a new standalone page (is_page=1). It is
@@ -75,11 +83,13 @@ func (s *ArticleService) Create(ctx context.Context, title, slug, content string
 // so a page is never briefly published as a post before a follow-up UPDATE flips
 // the flag (the race the old create-then-setArticleIsPage pattern carried).
 func (s *ArticleService) CreatePage(ctx context.Context, title, slug, content string, tags []string) (CreateResult, error) {
-	return s.create(ctx, title, slug, content, tags, true)
+	return s.create(ctx, title, slug, content, tags, true, "published")
 }
 
-// create is the shared post/page create path. isPage selects the article kind.
-func (s *ArticleService) create(ctx context.Context, title, slug, content string, tags []string, isPage bool) (CreateResult, error) {
+// create is the shared post/page create path. isPage selects the article kind;
+// status is persisted verbatim through the queue ("" would fall back to the
+// schema default 'published' at write time, so callers always pass one).
+func (s *ArticleService) create(ctx context.Context, title, slug, content string, tags []string, isPage bool, status string) (CreateResult, error) {
 	ctx, span := trace.Start(ctx, "ArticleService.Create")
 	defer span.End()
 	// Auto-derive a slug from the title when the caller omits one (ADR-0047).
@@ -109,7 +119,7 @@ func (s *ArticleService) create(ctx context.Context, title, slug, content string
 	}
 	art := dbpkg.Article{
 		ID: newID(), Title: title, Slug: slug,
-		Content: content, Tags: tags, IsPage: isPage,
+		Content: content, Tags: tags, IsPage: isPage, Status: status,
 		CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
 	}
 	if err := s.Queue.Enqueue(ctx, art, "insert"); err != nil {

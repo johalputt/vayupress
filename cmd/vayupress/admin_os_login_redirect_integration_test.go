@@ -34,7 +34,12 @@ func TestHandleOSLoginRedirectsWhenAuthed(t *testing.T) {
 	if err := dbpkg.Init(); err != nil {
 		t.Fatalf("db init: %v", err)
 	}
-	t.Cleanup(func() { dbpkg.DB.Close() })
+	t.Cleanup(func() {
+		// ClosePools first: on Windows the pool connections keep login.db open
+		// and the t.TempDir RemoveAll fails after the assertions have passed.
+		dbpkg.ClosePools()
+		dbpkg.DB.Close()
+	})
 
 	a := &App{
 		userStore: users.New(dbpkg.DB),

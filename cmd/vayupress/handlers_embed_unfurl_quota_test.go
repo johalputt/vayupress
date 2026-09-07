@@ -71,6 +71,9 @@ func embedCacheTestDB(t *testing.T) {
 		t.Fatalf("db init: %v", err)
 	}
 	t.Cleanup(func() {
+		// ClosePools first: on Windows the pool connections keep embedcache.db
+		// open and the t.TempDir RemoveAll fails after the assertions passed.
+		dbpkg.ClosePools()
 		_ = dbpkg.DB.Close()
 		dbpkg.DB = prevDB
 		config.Cfg = prevCfg

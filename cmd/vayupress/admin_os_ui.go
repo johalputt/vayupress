@@ -680,11 +680,19 @@ func (a *App) registerAdminOSUIRoutes(r chi.Router) {
 		pr.With(auth.CSRFTokenMiddleware).Post("/os/api/settings", a.handleOSSettingsAPI)
 		pr.With(auth.CSRFTokenMiddleware).Post("/os/api/posts/quick-create", a.handleOSQuickCreatePost)
 		pr.With(auth.CSRFTokenMiddleware).Post("/os/api/posts/status", a.handleOSPostStatus)
+	// One-request bulk apply for the Posts manager (Wave 4): per-slug outcomes,
+	// in-place row updates and honest tab counts instead of N parallel fetches
+	// and a blind full-page reload.
+	pr.With(auth.CSRFTokenMiddleware).Post("/os/api/posts/bulk", a.handleOSPostsBulk)
 		// HTMX in-place publish/unpublish toggle: returns an HTML row fragment
 		// (flipped button + out-of-band status pill) instead of JSON, so the
 		// Posts manager updates the row without a full-page reload.
 		pr.With(auth.CSRFTokenMiddleware).Post("/os/api/posts/{slug}/status-fragment", a.handleOSPostToggleFragment)
 		pr.With(auth.CSRFTokenMiddleware).Post("/os/api/posts/{slug}/indexnow-fragment", a.handleOSPostIndexNowFragment)
+		// Signed draft-share link (Wave 4.4): the editor's Share button mints a
+		// 48h preview token through the same signer the API uses, so a draft
+		// reaches a reviewer without becoming public.
+		pr.With(auth.CSRFTokenMiddleware).Post("/os/api/posts/{slug}/share", a.handleOSPostShare)
 		// HTMX in-place pin/unpin: returns the flipped pin button + an out-of-band
 		// "Pinned" badge, so the row updates without a full-page reload.
 		pr.With(auth.CSRFTokenMiddleware).Post("/os/api/posts/{slug}/pin-fragment", a.handleOSPostPinFragment)
@@ -715,6 +723,9 @@ func (a *App) registerAdminOSUIRoutes(r chi.Router) {
 		pr.With(auth.CSRFTokenMiddleware).Post("/os/api/editor/convert", a.handleOSEditorConvert)
 		pr.Get("/os/api/editor/versions/{slug}", a.handleOSEditorVersionList)
 		pr.Get("/os/api/editor/versions/{slug}/{id}", a.handleOSEditorVersionGet)
+		// Restore rewinds the article to a snapshot — a write, so CSRF-gated like
+		// the save it mirrors.
+		pr.With(auth.CSRFTokenMiddleware).Post("/os/api/editor/versions/{slug}/{id}/restore", a.handleOSEditorVersionRestore)
 
 		// Read-only APIs (no CSRF needed)
 		pr.Get("/os/api/activity", a.handleOSActivity)
@@ -854,6 +865,7 @@ func spaceSwitch(lvl int, _ *osSettings) string {
     <a class="space-switch__seg" data-world="clearnet" href="/os/world?target=clearnet">` + iconWorldClearnet + `<span>Clearnet</span></a>
     <span class="space-switch__seg is-active" data-world="tor" aria-current="true">` + iconWorldTor + `<span>Tor</span></span>
   </div>
+  <a class="space-switch__manage" href="/os/spaces">Manage worlds<span aria-hidden="true"> →</span></a>
 </div>`
 	}
 	// This is the CLEARNET console (not OnionMode): rendering it at all means the
@@ -873,6 +885,7 @@ func spaceSwitch(lvl int, _ *osSettings) string {
     <button type="button" class="space-switch__seg is-active" data-space-switch="off" data-world="clearnet" aria-pressed="true">` + iconWorldClearnet + `<span>Clearnet</span></button>
     <button type="button" class="space-switch__seg" data-space-switch="on" data-world="tor" aria-pressed="false">` + iconWorldTor + `<span>Tor</span></button>
   </div>
+  <a class="space-switch__manage" href="/os/spaces">Manage worlds<span aria-hidden="true"> →</span></a>
 </div>`
 }
 
@@ -933,26 +946,36 @@ func osWorkCard(href, title, desc, iconSVG string, count int, badge string, acce
 // Comments, Messages, Media and New Post tiles (plus Website on clearnet) that
 // used to live in the sidebar — each with its live count and, where relevant, a
 // notification badge. The clearnet-only Website tile is omitted in the Tor world.
-func osWorkspaceGrid(onion bool, blogPosts, pages, pendingComments, unread, media int) string {
+//
+// accessLevel gates every tile the same way the sidebar gates its items
+// (lvl < osPathMinLevel(href) ⇒ hidden): showing a tile the viewer cannot open
+// was a silent-denial loop waiting to happen — RBAC shown==reachable parity.
+func osWorkspaceGrid(onion bool, blogPosts, pages, pendingComments, unread, media, accessLevel int) string {
+	gate := func(item, href string) string {
+		if accessLevel < osPathMinLevel(href) {
+			return ""
+		}
+		return item
+	}
 	var b strings.Builder
 	b.WriteString(`<div class="section-head"><span class="section-head__title">Workspace</span><span class="section-head__hint">Everything you manage, in one place</span></div>`)
 	b.WriteString(`<div class="work-grid">`)
-	b.WriteString(osWorkCard("/os/editor", "New Post", "Start writing a new story", iconNewPost, 0, "", true))
-	b.WriteString(osWorkCard("/os/posts", "Posts", "Manage & edit your posts", iconPosts, blogPosts, "", false))
-	b.WriteString(osWorkCard("/os/pages", "Pages", "Standalone pages", iconPages, pages, "", false))
+	b.WriteString(gate(osWorkCard("/os/editor", "New Post", "Start writing a new story", iconNewPost, 0, "", true), "/os/editor"))
+	b.WriteString(gate(osWorkCard("/os/posts", "Posts", "Manage & edit your posts", iconPosts, blogPosts, "", false), "/os/posts"))
+	b.WriteString(gate(osWorkCard("/os/pages", "Pages", "Standalone pages", iconPages, pages, "", false), "/os/pages"))
 	cBadge := ""
 	if pendingComments > 0 {
 		cBadge = osBadgeCount(pendingComments)
 	}
-	b.WriteString(osWorkCard("/os/comments", "Comments", "Moderate reader comments", iconComments, 0, cBadge, false))
+	b.WriteString(gate(osWorkCard("/os/comments", "Comments", "Moderate reader comments", iconComments, 0, cBadge, false), "/os/comments"))
 	mBadge := ""
 	if unread > 0 {
 		mBadge = osBadgeCount(unread)
 	}
-	b.WriteString(osWorkCard("/os/messages", "Messages", "Contact-form inbox", iconMessages, 0, mBadge, false))
-	b.WriteString(osWorkCard("/os/media", "Media", "Images & uploads", iconMedia, media, "", false))
+	b.WriteString(gate(osWorkCard("/os/messages", "Messages", "Contact-form inbox", iconMessages, 0, mBadge, false), "/os/messages"))
+	b.WriteString(gate(osWorkCard("/os/media", "Media", "Images & uploads", iconMedia, media, "", false), "/os/media"))
 	if !onion {
-		b.WriteString(osWorkCard("/os/website", "Website", "Site identity & layout", iconPages, 0, "", false))
+		b.WriteString(gate(osWorkCard("/os/website", "Website", "Site identity & layout", iconPages, 0, "", false), "/os/website"))
 	}
 	b.WriteString(`</div>`)
 	return b.String()
@@ -1067,12 +1090,22 @@ func osNotifBell(s *osSettings) string {
 		notifs = s.Notifications
 	}
 	total := 0
+	hasDanger := false
 	for _, n := range notifs {
 		total += n.Count
+		if n.Severity == "danger" {
+			hasDanger = true
+		}
 	}
 	badge, headCount, activeCls := "", "", ""
 	if total > 0 {
-		badge = `<span class="topbar-notif__badge">` + notifCap(total) + `</span>`
+		// The badge wears its worst severity (Wave 2.2): ten failed jobs must
+		// read as an alarm, not as three pending comments.
+		badgeCls := ""
+		if hasDanger {
+			badgeCls = " topbar-notif__badge--danger"
+		}
+		badge = `<span class="topbar-notif__badge` + badgeCls + `">` + notifCap(total) + `</span>`
 		headCount = `<span class="topbar-notif__count">` + notifCap(total) + ` new</span>`
 		activeCls = " topbar-notif__btn--active"
 	}
@@ -1313,7 +1346,7 @@ func renderTrustedHTML(h htmpl.HTML) string {
 func adminOSLayout(nonce, title, active string, settings *osSettings, bodyHTML htmpl.HTML) string {
 	return adminOSShellHead(nonce, title, active, settings) +
 		renderTrustedHTML(bodyHTML) +
-		adminOSShellFoot(nonce, "", pageUsesAlpine(string(bodyHTML)))
+		adminOSShellFoot(nonce, "", pageUsesAlpine(string(bodyHTML)), pageUsesPurify(string(bodyHTML)))
 }
 
 // pageUsesAlpine reports whether a rendered admin page body hosts an Alpine
@@ -1322,9 +1355,60 @@ func adminOSLayout(nonce, title, active string, settings *osSettings, bodyHTML h
 // covered automatically — no per-page bookkeeping to drift out of sync.
 func pageUsesAlpine(body string) bool { return strings.Contains(body, "x-data") }
 
+// pageUsesPurify reports whether a rendered admin page body is a block-editor
+// page (the canvas marker only the editor renders), so adminOSShellFoot loads
+// DOMPurify — which only the editor's client code uses — on exactly those pages.
+func pageUsesPurify(body string) bool { return strings.Contains(body, "data-editor-canvas") }
+
 // adminOSShellHead emits the VayuOS document head, sidebar, topbar and the
 // opening <main class="content"> tag. The caller appends body content and then
 // adminOSShellFoot.
+// vpConfirm is the shared CSP-safe confirmation dialog (Wave 3.11): a real
+// focus-aware modal built with createElement and textContent only — the
+// browser-native confirm() is an unstyled chrome blob that cannot say what will
+// happen and blocks the whole tab. Defined in the foot's bootstrap script so
+// the per-page operator scripts (which run before admin-os.js) can use it too.
+// message/labels must be plain text; they are set via textContent.
+const vpConfirmScript = `window.vpConfirm=function(opts,onYes){
+  var lastFocus=document.activeElement;
+  var backdrop=document.createElement('div');backdrop.className='vp-confirm-backdrop';
+  var box=document.createElement('div');box.className='vp-confirm';box.setAttribute('role','alertdialog');box.setAttribute('aria-modal','true');
+  var t=document.createElement('div');t.className='vp-confirm__title';t.textContent=opts.title||'Are you sure?';
+  var m=document.createElement('div');m.className='vp-confirm__msg';if(opts.message)m.textContent=opts.message;
+  var row=document.createElement('div');row.className='vp-confirm__row';
+  var cancel=document.createElement('button');cancel.type='button';cancel.className='btn btn--ghost btn--sm';cancel.textContent=opts.cancel||'Cancel';
+  var ok=document.createElement('button');ok.type='button';ok.className='btn btn--danger btn--sm';ok.textContent=opts.confirm||'Confirm';
+  row.appendChild(cancel);row.appendChild(ok);
+  box.appendChild(t);if(opts.message)box.appendChild(m);box.appendChild(row);backdrop.appendChild(box);
+  function close(){if(backdrop.parentNode)backdrop.parentNode.removeChild(backdrop);document.removeEventListener('keydown',onKey);if(lastFocus&&lastFocus.focus)lastFocus.focus();}
+  function onKey(e){if(e.key==='Escape'){e.preventDefault();close();}else if(e.key==='Tab'){var f=[ok,cancel];var i=f.indexOf(document.activeElement);e.preventDefault();f[(i+1)%2].focus();}}
+  cancel.addEventListener('click',close);
+  backdrop.addEventListener('click',function(e){if(e.target===backdrop)close();});
+  ok.addEventListener('click',function(){close();if(onYes)onYes();});
+  document.addEventListener('keydown',onKey);
+  document.body.appendChild(backdrop);
+  ok.focus();
+};`
+
+// osThemeColorMetas renders the browser-chrome theme-colour meta for the
+// console's resolved theme (Wave 2.8 login polish). A fixed dark value lied to
+// light-theme and auto operators: the mobile browser chrome stayed near-black
+// over a near-white console. A "light"/"dark" theme renders its one honest
+// value; "auto" (the default) genuinely follows the OS, so it renders BOTH
+// media-scoped values and lets the browser pick per system preference.
+func osThemeColorMetas(theme string) string {
+	dark, light := "#080e1a", "#f8fafc"
+	switch theme {
+	case "light":
+		return `<meta name="theme-color" content="` + light + `">`
+	case "dark":
+		return `<meta name="theme-color" content="` + dark + `">`
+	default: // "auto" — the OS decides, so both are declared
+		return `<meta name="theme-color" media="(prefers-color-scheme: dark)" content="` + dark + `">` +
+			`<meta name="theme-color" media="(prefers-color-scheme: light)" content="` + light + `">`
+	}
+}
+
 func adminOSShellHead(nonce, title, active string, settings *osSettings) string {
 	et := html.EscapeString(title)
 	theme := "auto" // follow the operating system by default (clean/light on light OS)
@@ -1395,11 +1479,17 @@ func adminOSShellHead(nonce, title, active string, settings *osSettings) string 
      style-src 'unsafe-inline' — the strict admin CSP (style-src 'self') stays intact. -->
 <meta name="htmx-config" content='{"includeIndicatorStyles":false,"globalViewTransitions":true}'>
 <link rel="stylesheet" href="/os/static/css/admin-os.css?v=` + assetVer("css/admin-os.css") + `">
+    <!-- Wave 1: preload the Body and Mono fonts so the console typeset
+         with its designed typefaces from the first paint instead of
+         falling back to system-ui while the @font-face fetches resolve. -->
+    <link rel="preload" href="/static/fonts/inter-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/static/fonts/inter-latin-500.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/static/fonts/jetbrains-mono-latin-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" type="image/png" href="/static/favicon-light.png">
 <!-- Installable app (PWA): manifest + icons so the browser offers "Install VayuOS"
      on desktop and mobile, and the installed app opens straight into the console. -->
 <link rel="manifest" href="/os/manifest.webmanifest">
-<meta name="theme-color" content="#080e1a">
+` + osThemeColorMetas(theme) + `
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1463,7 +1553,12 @@ func adminOSShellHead(nonce, title, active string, settings *osSettings) string 
 // When pageScript is non-empty it is emitted as an additional nonce-gated inline
 // script alongside the shared operator-control helpers (csrf/vpPost/show) and a
 // live status region, so streaming operator pages keep their POST controls.
-func adminOSShellFoot(nonce, pageScript string, needsAlpine bool) string {
+//
+// needsPurify (variadic, adminOSLayout only) scopes DOMPurify (Wave 3.3): the
+// 21 KB library is used exclusively by the block editor (admin-os-editor.js),
+// so every non-editor console page was shipping it for nothing. Editor pages
+// are detected from the body markup via pageUsesPurify.
+func adminOSShellFoot(nonce, pageScript string, needsAlpine bool, needsPurify ...bool) string {
 	// Alpine (ADR-0136) is loaded ONLY on pages that actually host an island
 	// (an x-data component). Emitting the 61 KB CSP build + its document-wide
 	// MutationObserver on every admin page would tax parse time and every HTMX
@@ -1481,6 +1576,13 @@ func adminOSShellFoot(nonce, pageScript string, needsAlpine bool) string {
 <script src="/os/static/js/vayu-islands.js?v=` + assetVer("js/vayu-islands.js") + `" defer></script>
 <script src="/os/static/js/alpine-csp.min.js?v=` + assetVer("js/alpine-csp.min.js") + `" defer></script>
 `
+	}
+	// DOMPurify (Wave 3.3): only the block editor sanitises client-side, so only
+	// the editor ships the library. Non-editor pages stop paying the download
+	// and parse cost entirely.
+	purifyTag := ""
+	if len(needsPurify) > 0 && needsPurify[0] {
+		purifyTag = `<script src="/os/static/js/purify.min.js"></script>`
 	}
 	ops := ""
 	if pageScript != "" {
@@ -1603,9 +1705,10 @@ Array.prototype.forEach.call(document.querySelectorAll('.sidebar [data-copy], .w
   });
 });
 })();
+` + vpConfirmScript + `
 </script>
 ` + alpine + `<!-- Bootstrap (nonce-gated, reads data-admin-theme from body) -->
-<script src="/os/static/js/purify.min.js"></script>
+` + purifyTag + `
 <script nonce="` + nonce + `" src="/os/static/js/admin-os.js?v=` + assetVer("js/admin-os.js") + `"></script>
 </body></html>`
 }
@@ -1650,7 +1753,12 @@ type osNotification struct {
 	Detail string
 	Href   string
 	Count  int
-	Kind   string // "mail" | "comment" | "message" | "domain"
+	Kind   string // "mail" | "comment" | "message" | "domain" | "update" | "jobs" | "storage" | "mode"
+	// Severity (Wave 2.2): "" / "info" is a todo, "warn" needs attention soon,
+	// "danger" is something failing NOW. Drives the badge colour on the bell and
+	// the dashboard attention strip, so "3 pending comments" never screams the
+	// way "10 failed jobs" must.
+	Severity string
 }
 
 // getOSSettings loads settings needed for layout rendering.
@@ -1707,11 +1815,15 @@ func (a *App) getOSSettings(ctx context.Context) *osSettings {
 // the viewer cannot open.
 func (a *App) osNotifications(ctx context.Context, s *osSettings) []osNotification {
 	var out []osNotification
-	add := func(href, title, detail, kind string, count int) {
+	add := func(href, title, detail, kind string, count int, severity ...string) {
 		if count <= 0 || s.AccessLevel < osPathMinLevel(href) {
 			return
 		}
-		out = append(out, osNotification{Title: title, Detail: detail, Href: href, Count: count, Kind: kind})
+		sev := ""
+		if len(severity) > 0 {
+			sev = severity[0]
+		}
+		out = append(out, osNotification{Title: title, Detail: detail, Href: href, Count: count, Kind: kind, Severity: sev})
 	}
 	if dbpkg.DB == nil {
 		return out
@@ -1758,7 +1870,79 @@ func (a *App) osNotifications(ctx context.Context, s *osSettings) []osNotificati
 	if v, ok := a.latestUpdateNotice(ctx); ok {
 		add("/os/update", "VayuOS update ready", "Install "+v+" in one click", "update", 1)
 	}
+	// Wave 2.2 — the operational signals the bell used to ignore. All three come
+	// from the metrics snapshot (an atomic load; collectAdminMetrics is already
+	// running on a 30s ticker), so the bell costs nothing extra.
+	if snap := a.getAdminSnapshot(); snap != nil {
+		// Failed render/write jobs: the public site is silently going stale.
+		// One failure is "look soon"; a pile is "failing now".
+		if snap.FailedJobs > 0 {
+			sev := "warn"
+			if snap.FailedJobs >= 10 {
+				sev = "danger"
+			}
+			add("/os/monitoring", "Failed jobs", "render/write jobs failed — the site may be serving stale content", "jobs", snap.FailedJobs, sev)
+		}
+		// Disk pressure: quota consumption from the same snapshot. At 90% the
+		// next upload or backup can start failing — that is danger, not todo.
+		if snap.StoragePct >= 75 {
+			sev := "warn"
+			if snap.StoragePct >= 90 {
+				sev = "danger"
+			}
+			add("/os/storage", "Storage filling up", "of your storage quota is in use", "storage", int(snap.StoragePct), sev)
+		}
+		// Maintenance mode on: deliberate, but visible — an install parked in
+		// maintenance "for a moment" three days ago deserves a bell entry.
+		if config.Cfg.MaintenanceMode {
+			add("/os/modes", "Maintenance mode on", "the public site is offline behind a maintenance page", "mode", 1, "info")
+		}
+	}
 	return out
+}
+
+// osAttentionStrip renders the dashboard's attention strip (Wave 2.2): the
+// bell's actionable signals surfaced inline where the operator actually looks,
+// sorted danger → warn → info. Empty when there is nothing needing eyes — an
+// all-clear strip that always renders is wallpaper, not signal.
+func osAttentionStrip(notifs []osNotification) string {
+	weight := func(sev string) int {
+		switch sev {
+		case "danger":
+			return 0
+		case "warn":
+			return 1
+		default:
+			return 2
+		}
+	}
+	sorted := append([]osNotification(nil), notifs...)
+	for i := 1; i < len(sorted); i++ {
+		for j := i; j > 0 && weight(sorted[j].Severity) < weight(sorted[j-1].Severity); j-- {
+			sorted[j], sorted[j-1] = sorted[j-1], sorted[j]
+		}
+	}
+	var b strings.Builder
+	b.WriteString(`<div class="attention-strip" data-attention-strip role="region" aria-label="Needs attention">`)
+	for _, n := range sorted {
+		sev := n.Severity
+		if sev == "" {
+			sev = "info"
+		}
+		detail := n.Detail
+		if n.Kind != "update" && n.Kind != "storage" && n.Count > 0 {
+			detail = notifCap(n.Count) + " " + n.Detail
+		}
+		if n.Kind == "storage" {
+			detail = notifCap(n.Count) + "% " + n.Detail
+		}
+		b.WriteString(`<a class="attention-chip attention-chip--` + sev + `" href="` + n.Href + `">` +
+			`<span class="attention-chip__dot" aria-hidden="true"></span>` +
+			`<span class="attention-chip__title">` + html.EscapeString(n.Title) + `</span>` +
+			`<span class="attention-chip__detail">` + html.EscapeString(detail) + `</span></a>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
 }
 
 // roleDisplay returns a human label for a role slug.
@@ -2137,11 +2321,14 @@ func osLoginPage(prefillEmail, errMsg, next string) string {
         <input id="login-password" class="input" type="password" name="password"
           placeholder="Your password" autocomplete="current-password" required>
       </div>
-      <div class="field">
-        <label class="field-label" for="login-totp">Two-factor code <span class="login-hint">optional</span></label>
-        <input id="login-totp" class="input" type="text" name="totp"
-          inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
-      </div>
+      <details class="login-totp"` + loginTOTPOpen(errHTML) + `>
+        <summary class="login-totp__summary">Sign in with a 2FA code</summary>
+        <div class="field">
+          <label class="field-label" for="login-totp">Two-factor code</label>
+          <input id="login-totp" class="input" type="text" name="totp"
+            inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+        </div>
+      </details>
       <label class="login-remember" for="login-remember">
         <input id="login-remember" type="checkbox" name="remember" value="1" checked>
         <span>Remember me on this device</span>
@@ -2157,6 +2344,17 @@ func osLoginPage(prefillEmail, errMsg, next string) string {
 // shared by the sign-in and change-password pages. The .vp-os class and the
 // data-theme attribute both sit on <html> so the token overrides apply; the
 // theme defaults to "auto" (follows the OS) and is switchable via os-theme.js.
+// loginTOTPOpen reports whether the collapsed 2FA disclosure must start open:
+// only when the sign-in error was about the code itself, so a failed attempt
+// reopens the field instead of hiding the reason it failed.
+func loginTOTPOpen(errHTML string) string {
+	if strings.Contains(errHTML, "two-factor") || strings.Contains(errHTML, "2FA") ||
+		strings.Contains(errHTML, "code") || strings.Contains(errHTML, "TOTP") {
+		return " open"
+	}
+	return ""
+}
+
 func authPageShell(title, inner string) string {
 	return `<!DOCTYPE html>
 <html lang="en">
@@ -2170,7 +2368,7 @@ func authPageShell(title, inner string) string {
 <!-- Installable app (PWA): manifest + icons so the browser offers "Install VayuOS"
      on desktop and mobile, and the installed app opens straight into the console. -->
 <link rel="manifest" href="/os/manifest.webmanifest">
-<meta name="theme-color" content="#080e1a">
+` + osThemeColorMetas("auto") + `
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2227,6 +2425,151 @@ func osSparkline(vals []int) string {
 		`</svg>`
 }
 
+// ── Dashboard: first-run checklist (Wave 2.5) ────────────────────────────────
+
+// osChecklistItem is one row of the dashboard's first-run checklist. Review
+// items are actions the operator must eyeball elsewhere (DNS/HTTPS state lives
+// on its own page) — they render as a neutral "Review" step, never as a ✓/✗ the
+// server cannot honestly know.
+type osChecklistItem struct {
+	Label  string
+	Detail string
+	Href   string
+	Done   bool
+	Review bool
+}
+
+// osFirstRunChecklist assembles the dashboard's dismissable first-run card from
+// cheap, server-known facts only — DB counts, settings presence, the configured
+// domain. It deliberately performs NO network probes (DNS lookups, certificate
+// fetches): the dashboard render path must stay fast, and a probe that times
+// out would hang sign-in-to-dashboard. Nil when the viewer cannot reach the
+// pages the items link to, or when everything is already done.
+func (a *App) osFirstRunChecklist(ctx context.Context, accessLevel int) []osChecklistItem {
+	// Every item links into an admin-gated page; an author who cannot open
+	// /os/settings must not be handed a card of dead links.
+	if accessLevel < osPathMinLevel("/os/settings") {
+		return nil
+	}
+	var items []osChecklistItem
+	add := func(it osChecklistItem) { items = append(items, it) }
+
+	published := 0
+	if dbpkg.DB != nil {
+		_ = dbpkg.Reader().QueryRowContext(ctx, `SELECT COUNT(1) FROM articles WHERE status='published'`).Scan(&published)
+	}
+	add(osChecklistItem{
+		Label:  "Publish your first post",
+		Detail: "Drafts stay private until you flip them live from the editor",
+		Href:   "/os/posts",
+		Done:   published > 0,
+	})
+
+	// Site name + theme: value-diff against the compiled-in defaults. GetAll
+	// merges the defaults into its result, so presence proves nothing — an
+	// unset key resolves to "VayuPress" — but a value that DIFFERS from the
+	// default can only come from the operator.
+	if a.siteSettings != nil {
+		if kv, err := a.siteSettings.GetAll(ctx, settings.ForPrimary()); err == nil {
+			differsFromDefault := func(key string) bool {
+				v, ok := kv[key]
+				def, hasDefault := settings.Defaults[key]
+				if !hasDefault {
+					return ok && v != "" // no default ⇒ any stored value is a choice
+				}
+				return ok && v != def
+			}
+			add(osChecklistItem{
+				Label:  "Name your site",
+				Detail: "The name your readers see in the header and their inbox",
+				Href:   "/os/settings",
+				Done:   differsFromDefault(settings.KeySiteName),
+			})
+			themed := false
+			for k := range kv {
+				if strings.HasPrefix(k, "theme.") && differsFromDefault(k) {
+					themed = true
+					break
+				}
+			}
+			add(osChecklistItem{
+				Label:  "Make it yours",
+				Detail: "Pick colours and typography in Theme",
+				Href:   "/os/theme",
+				Done:   themed,
+			})
+		}
+	}
+
+	// A bare single-binary install serves "localhost" — the machine name no
+	// reader can type. Anything else counts as pointed.
+	domain := strings.TrimSpace(config.Cfg.Domain)
+	add(osChecklistItem{
+		Label:  "Point a real domain",
+		Detail: "A bare install only answers on localhost",
+		Href:   "/os/domains",
+		Done:   domain != "" && domain != "localhost",
+	})
+	add(osChecklistItem{
+		Label:  "Review DNS & HTTPS",
+		Detail: "Records resolve and the certificate is live — once a domain points here",
+		Href:   "/os/dns",
+		Review: true,
+	})
+
+	// All done ⇒ no card. A checklist that nags completed work is the same
+	// dishonesty the plan set out to remove.
+	for _, it := range items {
+		if !it.Done {
+			return items
+		}
+	}
+	return nil
+}
+
+// osFirstRunCard renders the dismissable checklist card. Dismissal lives in
+// localStorage (vayuOS.firstRun.dismissed): a per-browser "seen it" is exactly
+// right for an orientation card, and it needs no schema, no write endpoint and
+// no per-user column.
+func osFirstRunCard(items []osChecklistItem, nonce string) string {
+	var rows string
+	for _, it := range items {
+		state := `<a class="frc__action btn btn--ghost btn--sm" href="` + it.Href + `">Open<span aria-hidden="true"> →</span></a>`
+		mark := `<span class="frc__mark frc__mark--todo" aria-hidden="true">○</span>`
+		if it.Done {
+			state = `<span class="frc__done-label">Done</span>`
+			mark = `<span class="frc__mark frc__mark--done" aria-hidden="true">✓</span>`
+		} else if it.Review {
+			state = `<a class="frc__action btn btn--ghost btn--sm" href="` + it.Href + `">Review<span aria-hidden="true"> →</span></a>`
+		}
+		rows += `<li class="frc__item` + map[bool]string{true: " frc__item--done", false: ""}[it.Done] + `">` +
+			mark +
+			`<span class="frc__text"><span class="frc__label">` + it.Label + `</span>` +
+			`<span class="frc__detail">` + it.Detail + `</span></span>` +
+			state + `</li>`
+	}
+	return `<section class="card first-run" data-first-run role="region" aria-label="First-run checklist">
+  <div class="frc__head">
+    <span class="frc__title">Get set up</span>
+    <span class="frc__hint">The short path from install to a live site</span>
+    <button type="button" class="btn btn--ghost btn--sm" data-first-run-dismiss aria-label="Dismiss the first-run checklist">Dismiss</button>
+  </div>
+  <ul class="frc__list">` + rows + `</ul>
+</section>
+<script nonce="` + nonce + `">
+(function(){'use strict';
+var KEY='vayuOS.firstRun.dismissed';
+var card=document.querySelector('[data-first-run]');
+if(!card)return;
+function seen(){try{return window.localStorage.getItem(KEY)==='1';}catch(e){return false;}}
+function hide(){card.hidden=true;}
+if(seen())hide();
+var btn=card.querySelector('[data-first-run-dismiss]');
+if(btn)btn.addEventListener('click',function(){try{window.localStorage.setItem(KEY,'1');}catch(e){}hide();});
+})();
+</script>`
+}
+
 func (a *App) handleOSDashboard(w http.ResponseWriter, r *http.Request) {
 	nonce := render.CSPNonce(r)
 	cfg := a.getOSSettings(r.Context())
@@ -2254,7 +2597,19 @@ func (a *App) handleOSDashboard(w http.ResponseWriter, r *http.Request) {
 	if onionMode {
 		worldCardHTML = osWorldCard(true, cfg.TorSpaceOn, cfg.TorSpaceRunning, config.Cfg.Domain)
 	}
-	workspaceHTML := osWorkspaceGrid(onionMode, blogPosts, snap.TotalPages, pendingComments, snap.UnreadMessages, mediaCount)
+	workspaceHTML := osWorkspaceGrid(onionMode, blogPosts, snap.TotalPages, pendingComments, snap.UnreadMessages, mediaCount, cfg.AccessLevel)
+	// First-run checklist (Wave 2.5): the short path from install to a live
+	// site, assembled from cheap server-known facts and dismissed per browser.
+	// Nil for operators who are past it — and never rendered for roles that
+	// could not open the pages it links to.
+	firstRunHTML := ""
+	if items := a.osFirstRunChecklist(r.Context(), cfg.AccessLevel); len(items) > 0 {
+		firstRunHTML = osFirstRunCard(items, nonce)
+	}
+
+	// Attention strip (Wave 2.2): the bell's warn/danger signals surfaced on the
+	// dashboard itself, before the checklist and the world card.
+	attentionHTML := osAttentionStrip(cfg.Notifications)
 
 	body := `<!-- Quick compose -->
 <div class="quick-compose" role="search">
@@ -2263,7 +2618,7 @@ func (a *App) handleOSDashboard(w http.ResponseWriter, r *http.Request) {
     type="text" placeholder="Start a new post… (press Enter)" autocomplete="off"
     aria-label="Quick compose: type a title and press Enter">
 </div>
-` + worldCardHTML + workspaceHTML + `
+` + attentionHTML + firstRunHTML + worldCardHTML + workspaceHTML + `
 <!-- System health -->
 <div class="section-head"><span class="section-head__title">System health</span><span class="section-head__hint">Background jobs &amp; queue</span></div>
 <div class="stat-grid">
@@ -2341,15 +2696,49 @@ func osPostStatusPill(status string) string {
 // (handleOSPostToggleFragment), which returns the flipped button plus an
 // out-of-band swap of the status pill — so the row updates in place with no
 // full-page reload. slugEsc must already be HTML-escaped by the caller.
+// The button carries a stable per-slug id and data-src="body" so the fragment
+// endpoint and the bulk updater can always tell the row-face copy from this
+// accordion copy (Wave 3.5: the publish action lives on the row face too).
 func osPostStatusButton(slugEsc, status string) string {
 	label, to := "Unpublish", "draft"
 	if status == "draft" {
 		label, to = "Publish", "published"
 	}
-	return `<button type="button" class="btn btn--ghost btn--sm"` +
+	return `<button type="button" id="post-pub-` + slugEsc + `" data-src="body" class="btn btn--ghost btn--sm"` +
 		` hx-post="/os/api/posts/` + slugEsc + `/status-fragment"` +
 		` hx-vals='{"status":"` + to + `"}'` +
 		` hx-target="this" hx-swap="outerHTML" hx-disabled-elt="this">` + label + `</button>`
+}
+
+// osPostStatusFaceButton is the Wave 3.5 row-face copy of the publish toggle: a
+// compact icon button rendered in the summary row itself, so the most common
+// action (publish a draft) never requires opening the card. Same endpoint and
+// id scheme as the accordion copy — data-src="face" tells the fragment endpoint
+// which copy to return in place so BOTH copies flip on a single click.
+func osPostStatusFaceButton(slugEsc, status string) string {
+	glyph, label, to := "↥", "Publish", "published"
+	if status != "draft" {
+		glyph, label, to = "↧", "Unpublish", "draft"
+	}
+	return `<button type="button" id="post-pubface-` + slugEsc + `" data-src="face" class="btn btn--ghost btn--sm post-acc__face-btn"` +
+		` title="` + label + ` (opens nothing — toggles right here)" aria-label="` + label + ` post"` +
+		` hx-post="/os/api/posts/` + slugEsc + `/status-fragment"` +
+		` hx-vals='{"status":"` + to + `","src":"face"}'` +
+		` hx-target="this" hx-swap="outerHTML" hx-disabled-elt="this"><span aria-hidden="true">` + glyph + `</span></button>`
+}
+
+// osPostStatusButtonOOB renders the accordion publish toggle as an out-of-band
+// swap target, so a click on the row-face copy also flips the hidden copy.
+func osPostStatusButtonOOB(slugEsc, status string) string {
+	return strings.Replace(osPostStatusButton(slugEsc, status),
+		`data-src="body"`, `data-src="body" hx-swap-oob="true"`, 1)
+}
+
+// osPostStatusFaceButtonOOB renders the row-face publish toggle as an
+// out-of-band swap target, so a click on the accordion copy also flips the face.
+func osPostStatusFaceButtonOOB(slugEsc, status string) string {
+	return strings.Replace(osPostStatusFaceButton(slugEsc, status),
+		`data-src="face"`, `data-src="face" hx-swap-oob="true"`, 1)
 }
 
 // osPostStatusOOB renders the out-of-band status-pill update the fragment
@@ -2368,10 +2757,38 @@ func osPostPinButton(slugEsc string, featured bool) string {
 	if featured {
 		label, to = "Unpin", "0"
 	}
-	return `<button type="button" class="btn btn--ghost btn--sm"` +
+	return `<button type="button" id="post-pin-` + slugEsc + `" data-src="body" class="btn btn--ghost btn--sm"` +
 		` hx-post="/os/api/posts/` + slugEsc + `/pin-fragment"` +
 		` hx-vals='{"pinned":"` + to + `"}'` +
 		` hx-target="this" hx-swap="outerHTML" hx-disabled-elt="this">` + label + `</button>`
+}
+
+// osPostPinFaceButton is the Wave 3.5 row-face copy of the pin toggle: one click
+// pins or unpins from the summary row, without opening the card.
+func osPostPinFaceButton(slugEsc string, featured bool) string {
+	label, glyph, to := "Pin", "📌", "1"
+	if featured {
+		label, glyph, to = "Unpin", "📍", "0"
+	}
+	return `<button type="button" id="post-pinface-` + slugEsc + `" data-src="face" class="btn btn--ghost btn--sm post-acc__face-btn"` +
+		` title="` + label + ` (toggles right here)" aria-label="` + label + ` post"` +
+		` hx-post="/os/api/posts/` + slugEsc + `/pin-fragment"` +
+		` hx-vals='{"pinned":"` + to + `","src":"face"}'` +
+		` hx-target="this" hx-swap="outerHTML" hx-disabled-elt="this"><span aria-hidden="true">` + glyph + `</span></button>`
+}
+
+// osPostPinButtonOOB renders the accordion pin toggle as an out-of-band swap
+// target, so a click on the row-face copy also flips the hidden copy.
+func osPostPinButtonOOB(slugEsc string, featured bool) string {
+	return strings.Replace(osPostPinButton(slugEsc, featured),
+		`data-src="body"`, `data-src="body" hx-swap-oob="true"`, 1)
+}
+
+// osPostPinFaceButtonOOB renders the row-face pin toggle as an out-of-band swap
+// target, so a click on the accordion copy also flips the face.
+func osPostPinFaceButtonOOB(slugEsc string, featured bool) string {
+	return strings.Replace(osPostPinFaceButton(slugEsc, featured),
+		`data-src="face"`, `data-src="face" hx-swap-oob="true"`, 1)
 }
 
 // osPostPinBadge renders the pinned indicator next to a post's title, keyed by a
@@ -2661,6 +3078,7 @@ func (a *App) handleOSPosts(w http.ResponseWriter, r *http.Request) {
         <span class="mon-acc__sub">/` + esc + ` · Updated ` + config.FormatSite(p.Updated, "2 Jan 2006") + `</span>
       </span>
       <span id="post-status-` + esc + `" class="post-acc__status">` + osPostStatusPill(p.Status) + `</span>
+      <span class="post-acc__face">` + osPostStatusFaceButton(esc, p.Status) + osPostPinFaceButton(esc, p.Featured) + `</span>
       <svg class="mon-acc__chev" viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true"><path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </summary>
     <div class="mon-acc__body post-acc__body">` + tagsBlock + `
@@ -2744,12 +3162,13 @@ function show(t,e){if(!msg)return;msg.textContent=t;msg.classList.toggle('is-err
 document.querySelectorAll('[data-post-delete]').forEach(function(b){
   b.addEventListener('click',function(){
     var t=b.getAttribute('data-title')||'this post';
-    if(!window.confirm('Delete "'+t+'"? This permanently removes the post and its comments and cannot be undone.'))return;
-    b.disabled=true;
-    fetch('/os/api/posts/'+encodeURIComponent(b.getAttribute('data-slug')),{method:'DELETE',headers:{'X-CSRF-Token':csrf()}})
-      .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
-      .then(function(res){if(res.ok){show('Deleted',false);var row=b.closest('[data-post-row]');if(row)row.remove();}else{b.disabled=false;show(res.d.detail||res.d.title||'Error',true);}})
-      .catch(function(e){b.disabled=false;show('Error: '+e,true);});
+    vpConfirm({title:'Delete post',message:'Delete "'+t+'"? This permanently removes the post and its comments and cannot be undone.',confirm:'Delete'},function(){
+      b.disabled=true;
+      fetch('/os/api/posts/'+encodeURIComponent(b.getAttribute('data-slug')),{method:'DELETE',headers:{'X-CSRF-Token':csrf()}})
+        .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+        .then(function(res){if(res.ok){show('Deleted',false);var row=b.closest('[data-post-row]');if(row)row.remove();}else{b.disabled=false;show(res.d.detail||res.d.title||'Error',true);}})
+        .catch(function(e){b.disabled=false;show('Error: '+e,true);});
+    });
   });
 });
 // ── Bulk selection + actions ──────────────────────────────────────────────────
@@ -2764,15 +3183,36 @@ document.querySelectorAll('[data-post-bulk]').forEach(function(b){
   b.addEventListener('click',function(){
     var slugs=selectedSlugs();if(!slugs.length)return;
     var act=b.getAttribute('data-post-bulk');
-    if(act==='delete'&&!window.confirm('Delete '+slugs.length+' post'+(slugs.length>1?'s':'')+'? This cannot be undone.'))return;
-    b.disabled=true;show(act==='delete'?'Deleting…':'Updating…',false);
-    var jobs=slugs.map(function(s){
-      if(act==='delete')return fetch('/os/api/posts/'+encodeURIComponent(s),{method:'DELETE',headers:{'X-CSRF-Token':csrf()}});
-      return fetch('/os/api/posts/status',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf()},body:JSON.stringify({slug:s,status:act})});
-    });
-    Promise.all(jobs).then(function(){show('Done — '+slugs.length+' updated',false);setTimeout(function(){location.reload();},500);}).catch(function(e){b.disabled=false;show('Error: '+e,true);});
+    if(act==='delete'){vpConfirm({title:'Delete posts',message:'Delete '+slugs.length+' post'+(slugs.length>1?'s':'')+'? This cannot be undone.',confirm:'Delete'},function(){runBulk(b,act,slugs);});return;}
+    runBulk(b,act,slugs);
   });
 });
+function runBulk(b,act,slugs){
+    b.disabled=true;show(act==='delete'?'Deleting…':'Updating…',false);
+    fetch('/os/api/posts/bulk',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf()},body:JSON.stringify({action:act,slugs:slugs})})
+      .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+      .then(function(res){
+        if(!res.ok){b.disabled=false;show((res.d&&res.d.detail)||'Bulk request failed',true);return;}
+        var d=res.d,fail=[];
+        (d.results||[]).forEach(function(r0){
+          var row=null;
+          document.querySelectorAll('[data-post-select]').forEach(function(c){if(c.value===r0.slug)row=c.closest('[data-post-row]');});
+          if(r0.ok){
+            if(act==='delete'){if(row)row.remove();}
+            else{
+              var pill=document.getElementById('post-status-'+r0.slug);if(pill&&r0.pill)pill.innerHTML=r0.pill;
+              if(row&&r0.button){var btn=row.querySelector('button[hx-post$="/status-fragment"][data-src="body"]');if(btn)btn.outerHTML=r0.button;}
+              if(row){var chk=row.querySelector('[data-post-select]');if(chk)chk.checked=false;}
+            }
+          }else{fail.push(r0.slug+(r0.error?': '+r0.error:''));}
+        });
+        if(d.counts){var seg=document.querySelectorAll('.seg-btn .muted');if(seg.length>=3){seg[0].textContent=String(d.counts.all||0);seg[1].textContent=String(d.counts.published||0);seg[2].textContent=String(d.counts.draft||0);}}
+        refreshBulk();
+        if(fail.length){b.disabled=false;show('Failed: '+fail.join('; '),true);}
+        else{show('Done — '+d.ok+(act==='delete'?' deleted':' updated'),false);setTimeout(function(){b.disabled=false;},800);}
+      })
+      .catch(function(e){b.disabled=false;show('Error: '+e,true);});
+}
 })();
 </script>`
 	}
@@ -3847,25 +4287,53 @@ func (a *App) handleOSActivity(w http.ResponseWriter, r *http.Request) {
 		Icon string `json:"icon"`
 		Text string `json:"text"`
 		Time string `json:"time"`
+		Href string `json:"href,omitempty"` // Wave 2.3: every row links to where the work happens
+	}
+
+	// Wave 2.3 member gating: the feed used to show member emails to every
+	// signed-in role. Members are an admin surface (/os/members), so member
+	// rows are included only for viewers who could actually open that page —
+	// shown == reachable, the same RBAC parity the sidebar and palette hold.
+	lvl := accessAdmin
+	if u := currentUser(r); u != nil {
+		// Mail-only is a members-store property, not a console-user one; the
+		// client-role floor inside accessLevelFor covers confinement here.
+		lvl = accessLevelFor(u.Role, false)
 	}
 
 	items := []activityItem{}
 
-	// Recent articles
-	res, err := a.articles.List(r.Context(), 1, 5, "")
-	if err == nil {
-		for _, p := range res.Articles {
-			items = append(items, activityItem{
-				Kind: "post",
-				Icon: "✍",
-				Text: "Article published: " + p.Title,
-				Time: p.CreatedAt.UTC().Format(time.RFC3339),
-			})
+	// Recent articles — with an honest verb. The ArticleService list projection
+	// carries no status (and hardcoding "published" for every row was the lie
+	// this feed told), so the feed reads the five newest rows directly, status
+	// included: a draft row says "drafted" and links into the editor either way.
+	if dbpkg.DB != nil {
+		if rows, err := dbpkg.Reader().QueryContext(r.Context(),
+			`SELECT slug,title,COALESCE(status,'published'),created_at FROM articles ORDER BY created_at DESC LIMIT 5`); err == nil {
+			for rows.Next() {
+				var slug, title, status string
+				var created time.Time
+				if rows.Scan(&slug, &title, &status, &created) == nil {
+					verb := "Article published"
+					if status == "draft" {
+						verb = "Article drafted"
+					}
+					items = append(items, activityItem{
+						Kind: "post",
+						Icon: "✍",
+						Text: verb + ": " + title,
+						Time: created.UTC().Format(time.RFC3339),
+						Href: "/os/editor/" + slug,
+					})
+				}
+			}
+			_ = rows.Err() // best-effort feed; a read failure just yields fewer rows
+			rows.Close()
 		}
 	}
 
-	// Recent members (if members are enabled)
-	if a.members != nil {
+	// Recent members (gated to admins — see above).
+	if lvl >= osPathMinLevel("/os/members") && a.members != nil {
 		list, err := a.members.List(r.Context(), 3)
 		if err == nil {
 			for _, m := range list {
@@ -3874,6 +4342,7 @@ func (a *App) handleOSActivity(w http.ResponseWriter, r *http.Request) {
 					Icon: "👤",
 					Text: "Member joined: " + m.Email,
 					Time: m.CreatedAt.UTC().Format(time.RFC3339),
+					Href: "/os/members",
 				})
 			}
 		}
@@ -3896,6 +4365,14 @@ func (a *App) handleOSActivity(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleOSCmdIndex returns the command palette search index as JSON.
+//
+// Wave 1 fixes two lies this endpoint used to tell: its three "actions" carried
+// empty Fn strings (the buttons rendered but did nothing), and its 11-page
+// registry covered ~17% of the console while the input promised "Search posts,
+// members, settings…". The registry below now mirrors the sidebar/hubs and is
+// gated by the SAME osPathMinLevel predicate, so shown == reachable holds here
+// too. Actions are dispatched client-side through the vpActions registry
+// (static/js/admin-os.js), not window[fn] string lookup.
 func (a *App) handleOSCmdIndex(w http.ResponseWriter, r *http.Request) {
 	type cmdPost struct{ Label, Slug string }
 	type cmdAction struct{ Label, Icon, Hint, Fn string }
@@ -3909,23 +4386,78 @@ func (a *App) handleOSCmdIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	actions := []cmdAction{
-		{Label: "New Post", Icon: "✍", Hint: "Open the editor", Fn: ""},
-		{Label: "SEO Dashboard", Icon: "🔍", Fn: ""},
-		{Label: "Regenerate SEO artefacts", Icon: "⟳", Fn: ""},
+		{Label: "New Post", Icon: "✍", Hint: "Open the block editor", Fn: "newPost"},
+		{Label: "SEO Dashboard", Icon: "🔍", Hint: "Indexing and search health", Fn: "goSEO"},
+		{Label: "Regenerate SEO artefacts", Icon: "⟳", Hint: "Rebuild sitemap, RSS & robots.txt", Fn: "regenSEO"},
 	}
 
-	sPages := []cmdSetting{
+	allPages := []cmdSetting{
+		// Content workspace
+		{Label: "Posts", Icon: "📝", Href: "/os/posts"},
+		{Label: "Pages", Icon: "📄", Href: "/os/pages"},
+		{Label: "Comments", Icon: "💬", Href: "/os/comments"},
+		{Label: "Messages", Icon: "✉️", Href: "/os/messages"},
+		{Label: "Media library", Icon: "🖼", Href: "/os/media"},
+		{Label: "Website", Icon: "🌐", Href: "/os/website"},
+		// Hubs
+		{Label: "Dashboard", Icon: "🏠", Href: "/os"},
+		{Label: "Growth hub", Icon: "📈", Href: "/os/growth"},
+		{Label: "Optimize hub", Icon: "🚀", Href: "/os/optimize"},
+		{Label: "Operations hub", Icon: "🛠", Href: "/os/operations"},
+		// Growth family
+		{Label: "Members", Icon: "👥", Href: "/os/members"},
+		{Label: "Newsletter", Icon: "📰", Href: "/os/newsletter"},
+		{Label: "Monetization", Icon: "💰", Href: "/os/monetization"},
+		{Label: "Advertising", Icon: "📣", Href: "/os/ads"},
+		{Label: "My Profile", Icon: "🙋", Href: "/os/profile"},
+		// Optimize family
+		{Label: "SEO Dashboard", Icon: "🔍", Href: "/os/seo"},
+		{Label: "Analytics", Icon: "📊", Href: "/os/analytics"},
+		{Label: "VayuShield", Icon: "🛡", Href: "/os/shield"},
 		{Label: "Theme Studio", Icon: "🎨", Href: "/os/theme"},
-		{Label: "Monitoring", Icon: "📈", Href: "/os/monitoring"},
-		{Label: "Governance", Icon: "🛡", Href: "/os/governance"},
+		{Label: "Theme Store", Icon: "🛍", Href: "/os/theme/store"},
 		{Label: "Tools & Plugins", Icon: "🧩", Href: "/os/tools"},
-		{Label: "Update & Backup", Icon: "⬆", Href: "/os/update"},
+		{Label: "Domains", Icon: "🌍", Href: "/os/domains"},
+		{Label: "API Keys", Icon: "🔑", Href: "/os/apikeys"},
+		{Label: "Connector", Icon: "🔌", Href: "/os/connector"},
 		{Label: "General settings", Icon: "⚙", Href: "/os/settings/general"},
-		{Label: "Design & theme", Icon: "🎨", Href: "/os/settings/design"},
+		{Label: "Design & theme settings", Icon: "🎨", Href: "/os/settings/design"},
 		{Label: "Email settings", Icon: "✉", Href: "/os/settings/email"},
 		{Label: "Members settings", Icon: "👥", Href: "/os/settings/members"},
 		{Label: "Security settings", Icon: "🔒", Href: "/os/settings/security"},
-		{Label: "API Keys", Icon: "🔑", Href: "/os/apikeys"},
+		// Operations family
+		{Label: "Monitoring", Icon: "📉", Href: "/os/monitoring"},
+		{Label: "Storage & System", Icon: "💾", Href: "/os/storage"},
+		{Label: "Security posture", Icon: "🔒", Href: "/os/security"},
+		{Label: "System modes", Icon: "🧭", Href: "/os/modes"},
+		{Label: "Policy", Icon: "📜", Href: "/os/policy"},
+		{Label: "Topology", Icon: "🔗", Href: "/os/topology"},
+		{Label: "VayuFlow automations", Icon: "⚡", Href: "/os/vayuflow"},
+		{Label: "Backup & Recovery", Icon: "🗄", Href: "/os/vayukeep"},
+		{Label: "Governance", Icon: "⚖", Href: "/os/governance"},
+		{Label: "Update & Migration", Icon: "⬆", Href: "/os/update"},
+		{Label: "Architecture decisions", Icon: "📚", Href: "/os/adr"},
+		{Label: "DNS", Icon: "🌐", Href: "/os/dns"},
+		{Label: "System hub", Icon: "🧱", Href: "/os/system"},
+		// Products & spaces
+		{Label: "VayuMail inbox", Icon: "📮", Href: "/os/vayumail/inbox"},
+		{Label: "VayuTalk", Icon: "🗨", Href: "/os/talk"},
+		{Label: "Tor space", Icon: "🧅", Href: "/os/tor"},
+		{Label: "Spaces (worlds)", Icon: "🌗", Href: "/os/spaces"},
+	}
+
+	// Same predicate the sidebar uses: an entry only reaches the palette when
+	// this session could actually open it.
+	lvl := accessAdmin
+	cfg := a.getOSSettings(r.Context())
+	if cfg != nil {
+		lvl = cfg.AccessLevel
+	}
+	sPages := make([]cmdSetting, 0, len(allPages))
+	for _, p := range allPages {
+		if lvl >= osPathMinLevel(p.Href) {
+			sPages = append(sPages, p)
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -4023,8 +4555,10 @@ func (a *App) handleOSQuickCreatePost(w http.ResponseWriter, r *http.Request) {
 	// Create the draft. Content must be non-empty to pass article validation, so
 	// we seed a single space: it trims to empty, so handleOSEditor treats the
 	// post as an empty draft and opens the block editor, and the placeholder is
-	// replaced by the rendered blocks on the first save.
-	if _, err := a.articles.Create(r.Context(), title, slug, " ", nil); err != nil {
+	// replaced by the rendered blocks on the first save. CreateDraft (Wave 1)
+	// makes the status travel inside the queued insert itself, so the post is
+	// never briefly live between enqueue and a follow-up UPDATE.
+	if _, err := a.articles.CreateDraft(r.Context(), title, slug, " ", nil); err != nil {
 		writeAPIError(w, r, http.StatusInternalServerError, "create-error", err.Error(), "")
 		return
 	}

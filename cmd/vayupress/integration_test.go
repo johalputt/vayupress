@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -31,6 +32,7 @@ import (
 	"github.com/johalputt/vayupress/internal/queue"
 	"github.com/johalputt/vayupress/internal/render"
 	"github.com/johalputt/vayupress/internal/search"
+	"github.com/johalputt/vayupress/internal/versions"
 )
 
 // noopSearch satisfies search.Service with no-op implementations for tests.
@@ -67,10 +69,17 @@ func (directWriter) Enqueue(ctx context.Context, art dbpkg.Article, op string) e
 	switch op {
 	case "insert":
 		return dbpkg.RunInTx(ctx, dbpkg.DB, func(tx *sql.Tx) error {
+			// Mirror production insert (internal/queue): the status column is
+			// persisted, with "" falling back to the historical default. Without
+			// this the harness silently republished every draft-born article.
+			status := strings.TrimSpace(art.Status)
+			if status == "" {
+				status = "published"
+			}
 			if _, err := tx.Exec(
-				`INSERT INTO articles(id,title,slug,content,tags,created_at,updated_at) VALUES(?,?,?,?,?,?,?)`,
+				`INSERT INTO articles(id,title,slug,content,tags,created_at,updated_at,status) VALUES(?,?,?,?,?,?,?,?)`,
 				art.ID, art.Title, art.Slug, art.Content, tagsCSV,
-				art.CreatedAt.Format(time.RFC3339), art.UpdatedAt.Format(time.RFC3339),
+				art.CreatedAt.Format(time.RFC3339), art.UpdatedAt.Format(time.RFC3339), status,
 			); err != nil {
 				return err
 			}
@@ -78,6 +87,14 @@ func (directWriter) Enqueue(ctx context.Context, art dbpkg.Article, op string) e
 		})
 	case "update":
 		return dbpkg.RunInTx(ctx, dbpkg.DB, func(tx *sql.Tx) error {
+			// Mirror production update: snapshot the overwritten row first so
+			// version history behaves in tests exactly as it does live.
+			var vID, vTitle, vContent, vTags string
+			if err := tx.QueryRow(`SELECT id,title,content,COALESCE(tags,'') FROM articles WHERE slug=?`, art.Slug).
+				Scan(&vID, &vTitle, &vContent, &vTags); err == nil {
+				_, _ = tx.Exec(`INSERT INTO article_versions(article_id,slug,title,content,tags,label) VALUES(?,?,?,?,?,?)`,
+					vID, art.Slug, vTitle, vContent, vTags, "pre-update")
+			}
 			if _, err := tx.Exec(
 				`UPDATE articles SET title=?,content=?,tags=?,updated_at=? WHERE slug=?`,
 				art.Title, art.Content, tagsCSV,
@@ -129,7 +146,14 @@ func newTestHarness(t *testing.T) (*httptest.Server, string) {
 	if err := dbpkg.Init(); err != nil {
 		t.Fatalf("db init: %v", err)
 	}
-	t.Cleanup(func() { dbpkg.DB.Close() })
+	// Release the WAL read pools BEFORE the temp-dir cleanup runs (LIFO: this
+	// registered-after-TempDir cleanup executes first). On Windows an open pool
+	// handle keeps test.db locked, so otherwise every harness test fails in
+	// teardown regardless of its assertions.
+	t.Cleanup(func() {
+		dbpkg.ClosePools()
+		dbpkg.DB.Close()
+	})
 
 	auth.InitCSRFSecret()
 
@@ -142,7 +166,8 @@ func newTestHarness(t *testing.T) (*httptest.Server, string) {
 			Repo:  dbpkg.NewArticleRepo(dbpkg.DB),
 			Queue: directWriter{},
 		},
-		search: &noopSearch{},
+		search:       &noopSearch{},
+		versionStore: versions.New(dbpkg.DB),
 	}
 	a.pluginManager = plugins.New(a.pluginRegistry)
 

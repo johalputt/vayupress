@@ -1,29 +1,33 @@
-/* ============================================================
-   VayuPress VayuOS — Design System
-   Sovereign · Self-hosted · Zero-CDN · Strict-CSP
+﻿/* ============================================================
+   VayuPress VayuOS â€” Design System
+   Sovereign Â· Self-hosted Â· Zero-CDN Â· Strict-CSP
    All layout and component styles. No inline-style required.
    Scope: .vp-os body class (coexists with v2 without conflict)
    ============================================================ */
 
-/* ── Fonts ─────────────────────────────────────────────────── */
-/* Space Grotesk — the brand face, served from the SAME embedded files the public
+/* â”€â”€ Fonts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Space Grotesk â€” the brand face, served from the SAME embedded files the public
    theme uses (internal/theme/vayu.css). These three weights are compiled into the
    binary and allowlisted at /static/fonts, so they work on every install.
 
-   This previously pointed at /os/static/fonts/space-grotesk.woff2 — a file that
+   This previously pointed at /os/static/fonts/space-grotesk.woff2 â€” a file that
    exists nowhere in the repo and is embedded in no binary, so every console page
-   load fired a 404 and fell through to the system stack. Inter and JetBrains Mono
-   were declared the same way and are gone entirely: shipping ~200 KB of fonts
-   inside a single-binary product to restyle an admin panel that already reads
-   correctly is the wrong trade, and their family names stay first in the stacks
-   below so anyone who has them installed locally still gets them. */
+   load fired a 404 and fell through to the system stack. Wave 1 of the
+   dashboard upgrade reverses the Inter/JetBrains Mono removal: their woff2
+   files were already embedded in the binary unused, so shipping three faces
+   costs a one-time ~70 KB fetch and restores the typography the token stacks
+   always promised â€” body text no longer silently renders as system-ui. */
 @font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 500; font-display: swap; src: url("/static/fonts/space-grotesk-latin-500.woff2") format("woff2"); }
 @font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 600; font-display: swap; src: url("/static/fonts/space-grotesk-latin-600.woff2") format("woff2"); }
 @font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 700; font-display: swap; src: url("/static/fonts/space-grotesk-latin-700.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("/static/fonts/inter-latin-400.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap; src: url("/static/fonts/inter-latin-500.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("/static/fonts/inter-latin-600.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("/static/fonts/jetbrains-mono-latin-400.woff2") format("woff2"); }
 
-/* ── Design Tokens ──────────────────────────────────────────── */
+/* â”€â”€ Design Tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os {
-  /* Backgrounds — a calm, clean dark navy. Surfaces lift from the base in small,
+  /* Backgrounds â€” a calm, clean dark navy. Surfaces lift from the base in small,
      even steps. */
   --bg-base:      #080e1a;
   --bg-surface:   #0f1827;
@@ -31,7 +35,7 @@
   --bg-surface-3: #1e2d47;
   --bg-glass:     rgba(15, 24, 39, 0.80);
 
-  /* Cards — solid surface panels with a soft border. */
+  /* Cards â€” solid surface panels with a soft border. */
   --card-bg:      #0f1827;
   --card-border:  rgba(99, 130, 174, 0.18);
   --card-border-strong: rgba(99, 130, 174, 0.32);
@@ -40,7 +44,7 @@
   --border:       rgba(99, 130, 174, 0.18);
   --border-strong:rgba(99, 130, 174, 0.32);
 
-  /* Text — muted tiers lifted for readability (AA against every dark surface).
+  /* Text â€” muted tiers lifted for readability (AA against every dark surface).
      --text-2/--text-3 drive nearly all secondary/helper/placeholder copy app-
      wide, so raising them here brightens the whole console, not just one page. */
   --text:         #eef2f8;
@@ -49,7 +53,7 @@
   /* Aliases: some components reference --text-1/--surface-2 (undefined before).
      Defined via var() indirection so they follow the light-theme overrides of
      --text/--bg-surface-2 automatically. Without these, `fill: var(--text-1)`
-     in SVG fell back to the initial value (black) → invisible chart tooltips. */
+     in SVG fell back to the initial value (black) â†’ invisible chart tooltips. */
   --text-1:       var(--text);
   --surface-2:    var(--bg-surface-2);
 
@@ -59,6 +63,10 @@
   --brand-glow:   rgba(14, 165, 233, 0.28);
   --accent:       #a78bfa;
   --accent-dim:   rgba(167, 139, 250, 0.18);
+  /* Ink for labels sitting ON solid brand/accent fills. Hardcoded white failed
+     AA against every one of them (â‰ˆ2.7:1 â€” audit P0); near-black ink passes on
+     all three fills in both themes (Wave 1). */
+  --on-brand:     #06121f;
 
   /* Semantic */
   --ok:           #34d399;
@@ -111,7 +119,7 @@
   --topbar-h:  56px;
 }
 
-/* Light mode override. "auto" is intentionally NOT forced light here — it
+/* Light mode override. "auto" is intentionally NOT forced light here â€” it
    follows the system via the prefers-color-scheme media query below, so a
    dark-preference OS keeps the dark base tokens. */
 .vp-os[data-theme="light"] {
@@ -128,10 +136,19 @@
   --text:         #0f172a;
   --text-2:       #475569;
   --text-3:       #64748b;
-  --brand:        #0284c7;
-  --brand-dim:    rgba(2, 132, 199, 0.10);
-  --brand-glow:   rgba(2, 132, 199, 0.20);
+  --brand:        #0369a1;
+  --brand-dim:    rgba(3, 105, 161, 0.10);
+  --brand-glow:   rgba(3, 105, 161, 0.20);
   --accent:       #7c3aed;
+  /* Semantic colors re-tuned for light surfaces. The dark-theme brights fail
+     hard on white (#34d399 â‰ˆ 1.92:1, warn â‰ˆ1.55:1 â€” audit P0); until Wave 1 only
+     --pending had an override. Ink on brand flips the other way: dark ink is
+     unreadable on white cards, so light theme keeps near-white labels on fills. */
+  --ok:           #047857;  --ok-dim:     rgba(4, 120, 87, 0.12);
+  --warn:         #b45309;  --warn-dim:   rgba(180, 83, 9, 0.14);
+  --danger:       #dc2626;  --danger-dim: rgba(220, 38, 38, 0.12);
+  --info:         #2563eb;  --info-dim:   rgba(37, 99, 235, 0.12);
+  --on-brand:     #f4f8fd;
   --sh-sm: 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.08);
   --sh:    0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
   --sh-lg: 0 12px 40px rgba(0,0,0,0.16);
@@ -151,17 +168,23 @@
     --text:         #0f172a;
     --text-2:       #475569;
     --text-3:       #64748b;
-    --brand:        #0284c7;
-    --brand-dim:    rgba(2, 132, 199, 0.10);
-    --brand-glow:   rgba(2, 132, 199, 0.20);
+    --brand:        #0369a1;
+    --brand-dim:    rgba(3, 105, 161, 0.10);
+    --brand-glow:   rgba(3, 105, 161, 0.20);
     --accent:       #7c3aed;
+    /* Mirror of the forced-light overrides above â€” auto must match explicit. */
+    --ok:           #047857;  --ok-dim:     rgba(4, 120, 87, 0.12);
+    --warn:         #b45309;  --warn-dim:   rgba(180, 83, 9, 0.14);
+    --danger:       #dc2626;  --danger-dim: rgba(220, 38, 38, 0.12);
+    --info:         #2563eb;  --info-dim:   rgba(37, 99, 235, 0.12);
+    --on-brand:     #f4f8fd;
     --sh-sm: 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.08);
     --sh:    0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
     --sh-lg: 0 12px 40px rgba(0,0,0,0.16);
   }
 }
 
-/* ── Reset ───────────────────────────────────────────────────── */
+/* â”€â”€ Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os *, .vp-os *::before, .vp-os *::after { box-sizing: border-box; margin: 0; padding: 0; }
 .vp-os {
   font-family: var(--font-body); font-size: var(--text-base); color: var(--text);
@@ -192,7 +215,7 @@
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 
-/* ── Shell layout ────────────────────────────────────────────── */
+/* â”€â”€ Shell layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .shell {
   display: flex;
   min-height: 100vh;
@@ -212,7 +235,7 @@
   width: 100%;
 }
 
-/* ── Sidebar ─────────────────────────────────────────────────── */
+/* â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .sidebar {
   position: fixed;
   top: 0; left: 0;
@@ -274,8 +297,8 @@
   margin-top: var(--sp-2);
 }
 
-/* One-click Clearnet⟷Tor world switch, pinned to the top of the sidebar
-   (ADR-0141) — styled like the marketing site's world toggle: a pill with a
+/* One-click ClearnetâŸ·Tor world switch, pinned to the top of the sidebar
+   (ADR-0141) â€” styled like the marketing site's world toggle: a pill with a
    sliding thumb that sits under the active world and springs across on hover to
    preview the switch. Clearnet rides a sky-blue thumb, Tor a violet one. */
 .vp-os .space-switch-wrap { padding: var(--sp-3) var(--sp-3) 0; }
@@ -291,7 +314,7 @@
   box-shadow: inset 0 1px 3px rgba(2, 8, 20, 0.35);
 }
 .vp-os .space-switch.is-busy { opacity: 0.6; pointer-events: none; }
-/* The sliding thumb — absolutely positioned under the segments, its width one
+/* The sliding thumb â€” absolutely positioned under the segments, its width one
    half of the inner track; it translates by its own width to reach segment 2. */
 .vp-os .space-switch__thumb {
   position: absolute;
@@ -395,8 +418,8 @@
   transition: background var(--t), color var(--t), transform var(--t-spring);
   text-decoration: none;
 }
-/* Each destination carries its own premium light accent — the icon glows in it
-   on hover, and the active rail lights up in it — so the side panel reads as a
+/* Each destination carries its own premium light accent â€” the icon glows in it
+   on hover, and the active rail lights up in it â€” so the side panel reads as a
    colourful, legible map instead of one flat blue list. */
 .vp-os .nav-link[data-nav="dashboard"]  { --nav-accent: #7dd3fc; } /* sky     */
 .vp-os .nav-link[data-nav="growth"]     { --nav-accent: #6ee7b7; } /* emerald */
@@ -445,10 +468,10 @@
 }
 .vp-os .bulk-bar[hidden] { display: none; }
 
-/* SEO search-result preview (post settings → Meta data & SEO). */
+/* SEO search-result preview (post settings â†’ Meta data & SEO). */
 .vp-os .seo-snippet {
   padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-md);
-  background: #fff; max-width: 600px;
+  background: #fff; max-width: 640px;
 }
 .vp-os[data-admin-theme="dark"] .seo-snippet,
 .vp-os .seo-snippet { background: var(--bg-surface-2); }
@@ -486,7 +509,7 @@
 .vp-os .sidebar-user-name { font-weight: 600; color: var(--text); }
 .vp-os .sidebar-user-role { color: var(--text-3); }
 
-/* ── Topbar ──────────────────────────────────────────────────── */
+/* â”€â”€ Topbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .topbar {
   position: sticky;
   top: 0;
@@ -523,7 +546,7 @@
    accent so the state stays legible. */
 .vp-os.nav-collapsed .menu-toggle { color: var(--ico-glow, var(--brand)); }
 /* Desktop: the collapse toggle slides the fixed sidebar off-screen and lets the
-   content reclaim the full width — a smooth transition, no scroll lock. */
+   content reclaim the full width â€” a smooth transition, no scroll lock. */
 @media (min-width: 769px) {
   .vp-os.nav-collapsed .sidebar { transform: translateX(-100%); }
   .vp-os.nav-collapsed .main { margin-left: 0; }
@@ -545,7 +568,7 @@
   transition: width 0.32s cubic-bezier(0.16, 0.84, 0.44, 1),
     border-color var(--t-fast), color var(--t-fast), box-shadow var(--t), background var(--t-fast);
 }
-/* Expand on hover/focus into a wider search affordance — the flex spacer to its
+/* Expand on hover/focus into a wider search affordance â€” the flex spacer to its
    left absorbs the delta, so it grows leftward and the right-side controls stay
    put. A soft brand ring + icon nudge make it feel alive. */
 .vp-os .topbar-cmd:hover,
@@ -567,11 +590,11 @@
   .vp-os .topbar-cmd:hover svg { transform: none; }
 }
 
-/* ── Premium theme toggle (sun / moon / auto) ────────────────────────────────
-   The button cycles light → dark → auto; the three glyphs are stacked and the
+/* â”€â”€ Premium theme toggle (sun / moon / auto) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   The button cycles light â†’ dark â†’ auto; the three glyphs are stacked and the
    active one (keyed off <body data-theme>) rotates + fades in. Auto is the
    default, so an unexpected value still shows a glyph rather than a blank. */
-/* No overflow:hidden — it would clip the icon-shaped drop-shadow glow. */
+/* No overflow:hidden â€” it would clip the icon-shaped drop-shadow glow. */
 .vp-os .topbar-theme-btn { position: relative; }
 .vp-os .theme-ico {
   position: absolute; inset: 0; margin: auto; width: 18px; height: 18px;
@@ -591,7 +614,7 @@
   .vp-os[data-theme="light"] .theme-ico--light, .vp-os[data-theme="dark"] .theme-ico--dark { transform: none; }
 }
 
-/* ── Notification centre (topbar bell + expandable panel) ────────────────────
+/* â”€â”€ Notification centre (topbar bell + expandable panel) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    The bell replaced the New Post shortcut: a count badge + a dropdown of
    actionable notifications, each a direct link to the page that clears it. */
 .vp-os .topbar-notif { position: relative; display: inline-flex; }
@@ -611,16 +634,16 @@
   .vp-os .topbar-notif__btn--active::after { animation: none; }
 }
 
-/* ── Feedback affordance (topbar "report a bug / suggest an improvement") ─────
+/* â”€â”€ Feedback affordance (topbar "report a bug / suggest an improvement") â”€â”€â”€â”€â”€
    One button that opens the composer in feedback mode; on hover/focus a small
    premium popover explains it. Pure CSS, so it works in both consoles. */
 .vp-os .topbar-feedback { position: relative; display: inline-flex; }
 .vp-os .topbar-feedback__btn { position: relative; color: var(--text-2); }
 
-/* Unified topbar icon buttons (hamburger · feedback · notifications · theme):
-   identical 36×36 boxes, each glowing in its OWN premium light colour on hover.
+/* Unified topbar icon buttons (hamburger Â· feedback Â· notifications Â· theme):
+   identical 36Ã—36 boxes, each glowing in its OWN premium light colour on hover.
    The glow follows the GLYPH shape (filter: drop-shadow on a transparent button),
-   NOT a rectangle — so there is no box ring, just the lit icon, gently enlarged.
+   NOT a rectangle â€” so there is no box ring, just the lit icon, gently enlarged.
    Each button declares its accent via --ico-glow. */
 .vp-os .topbar .btn--icon        { --ico-glow: var(--brand); }
 .vp-os .menu-toggle              { --ico-glow: #7dd3fc; } /* sky    */
@@ -662,7 +685,7 @@
   .vp-os .topbar-feedback__pop { position: fixed; top: 56px; right: var(--sp-3); left: var(--sp-3); width: auto; }
 }
 
-/* ── Feedback compose banner ─────────────────────────────────────────────── */
+/* â”€â”€ Feedback compose banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vm-feedback-banner {
   margin-bottom: var(--sp-4); padding: var(--sp-3) var(--sp-4);
   border: 1px solid var(--border-strong); border-radius: var(--r-md);
@@ -731,7 +754,7 @@
   .vp-os .topbar-notif__panel { position: fixed; top: 56px; right: var(--sp-3); left: var(--sp-3); width: auto; }
 }
 
-/* ── Page header ─────────────────────────────────────────────── */
+/* â”€â”€ Page header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .page-header {
   display: flex;
   align-items: center;
@@ -758,7 +781,7 @@
 .vp-os .page-sub a { color: var(--brand); }
 .vp-os .page-header:has(+ .page-sub) { margin-bottom: var(--sp-2); }
 
-/* ── Buttons ─────────────────────────────────────────────────── */
+/* â”€â”€ Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .btn {
   display: inline-flex;
   align-items: center;
@@ -782,14 +805,14 @@
 
 .vp-os .btn--primary {
   background: var(--brand);
-  color: #fff;
+  color: var(--on-brand); /* was #fff â€” 2.77:1 on brand, failed AA (Wave 1) */
   border-color: var(--brand);
 }
 .vp-os .btn--primary:hover { filter: brightness(1.06); }
 
 .vp-os .btn--accent {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-brand); /* was #fff â€” 2.72:1, failed AA */
   border-color: var(--accent);
 }
 .vp-os .btn--accent:hover { opacity: 0.9; box-shadow: 0 4px 12px var(--accent-dim); }
@@ -806,7 +829,7 @@
   color: var(--danger);
   border-color: var(--danger);
 }
-.vp-os .btn--danger:hover { background: var(--danger); color: #fff; }
+.vp-os .btn--danger:hover { background: var(--danger); color: var(--on-brand); }
 
 .vp-os .btn--sm { padding: 0.35rem 0.75rem; font-size: var(--text-xs); }
 .vp-os .btn--lg { padding: 0.75rem 1.5rem; font-size: var(--text-base); }
@@ -817,8 +840,8 @@
   line-height: 0; cursor: pointer; text-decoration: none;
   transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast), transform var(--t-spring), filter var(--t);
 }
-/* Every topbar glyph renders at exactly 18×18 regardless of the SVG's own
-   width/height attrs — this is what keeps the bell the same size as the rest. */
+/* Every topbar glyph renders at exactly 18Ã—18 regardless of the SVG's own
+   width/height attrs â€” this is what keeps the bell the same size as the rest. */
 .vp-os .btn--icon svg { display: block; width: 18px; height: 18px; }
 /* The PWA install button stays hidden until the browser reports installability;
    without this, the inline-flex above would defeat the [hidden] attribute. */
@@ -828,8 +851,8 @@
 .vp-os .btn--icon-lg { width: 42px; height: 42px; padding: 0; }
 .vp-os .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
-/* ── Payment gateway cards + setup guide (premium) ───────────────────────────
-   The connect cards (Stripe · PayPal · BTCPay) share a premium frame with a
+/* â”€â”€ Payment gateway cards + setup guide (premium) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   The connect cards (Stripe Â· PayPal Â· BTCPay) share a premium frame with a
    thin accent bar; the crypto card wears a coin-spectrum accent. The collapsible
    "how to turn this on" guide keeps first-run setup obvious without clutter. */
 .vp-os .card--pay { position: relative; overflow: hidden; }
@@ -851,7 +874,7 @@
   display: flex; align-items: center; gap: 0.5rem;
 }
 .vp-os .pay-guide > summary::-webkit-details-marker { display: none; }
-.vp-os .pay-guide > summary::before { content: "▸"; color: var(--brand); transition: transform var(--t-fast); }
+.vp-os .pay-guide > summary::before { content: "â–¸"; color: var(--brand); transition: transform var(--t-fast); }
 .vp-os .pay-guide[open] > summary::before { transform: rotate(90deg); }
 .vp-os .pay-guide__steps {
   margin: 0; padding: 0 var(--sp-5) var(--sp-4) calc(var(--sp-6) + 0.25rem);
@@ -859,10 +882,10 @@
 }
 .vp-os .pay-guide__steps code { font-size: 0.82em; }
 
-/* ── Monetization accordions (premium · animated · responsive) ───────────────
-   Each option collapses to a summary row (icon · title · one-line subtitle ·
+/* â”€â”€ Monetization accordions (premium Â· animated Â· responsive) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   Each option collapses to a summary row (icon Â· title Â· one-line subtitle Â·
    status chip); expanding reveals the existing card, chromeless, with a smooth
-   fade/slide and a rotating chevron. Native <details> — no JS, CSP-safe. */
+   fade/slide and a rotating chevron. Native <details> â€” no JS, CSP-safe. */
 .vp-os .mon-stack { display: grid; gap: var(--sp-3); margin-bottom: var(--sp-6); }
 .vp-os .mon-acc {
   border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg-surface);
@@ -888,7 +911,7 @@
 .vp-os .mon-acc[open] .mon-acc__sum { border-bottom: 1px solid var(--border); }
 .vp-os .mon-acc__body { padding: var(--sp-4); animation: mon-reveal 0.28s cubic-bezier(0.16, 0.84, 0.44, 1); }
 @keyframes mon-reveal { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-/* The wrapped card renders chromeless — the accordion is the frame — and its
+/* The wrapped card renders chromeless â€” the accordion is the frame â€” and its
    duplicate title + accent bar are hidden (the summary already names it). */
 .vp-os .mon-acc__body > .card { border: 0; background: transparent; box-shadow: none; padding: 0; margin: 0; }
 .vp-os .mon-acc__body > .card::before { display: none; }
@@ -903,7 +926,7 @@
 .vp-os .mon-chip--off { color: var(--text-3); }
 @media (prefers-reduced-motion: reduce) { .vp-os .mon-acc__body { animation: none; } }
 
-/* ── Posts manager — premium per-post accordion cards ────────────────────────
+/* â”€â”€ Posts manager â€” premium per-post accordion cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Each post is a collapsible card (reusing the .mon-acc frame). The bulk-select
    checkbox lives OUTSIDE the <summary> (column 1 of the row grid) so ticking it
    never toggles the card; tapping the card reveals only that post's actions. */
@@ -924,14 +947,14 @@
 .vp-os .post-acc__tags { display: flex; flex-wrap: wrap; gap: 4px; }
 .vp-os .post-acc__meta-row { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
 .vp-os .post-acc__actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .vp-os .mon-acc__sub { white-space: normal; }
   .vp-os .mon-chip { display: none; }
 }
 
-/* ── Update & Backup — premium hero ──────────────────────────────────────────
+/* â”€â”€ Update & Backup â€” premium hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    The software-update panel: a glassy hero with a drifting accent aura, an
-   Installed → Latest version flow with an arrow, and a live status chip. */
+   Installed â†’ Latest version flow with an arrow, and a live status chip. */
 .vp-os .upd-hero {
   position: relative;
   border: 1px solid var(--card-border);
@@ -983,12 +1006,12 @@
 .vp-os .upd-opt-note { font-size: var(--text-xs); color: var(--text-3); line-height: 1.5; margin: 0 0 8px 26px; }
 .vp-os .upd-actions { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); margin-top: var(--sp-4); }
 .vp-os .upd-file { max-width: 22rem; }
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .vp-os .upd-ver__arrow { transform: rotate(90deg); align-self: center; }
   .vp-os .upd-vers { flex-direction: column; }
 }
 
-/* ── Cards ───────────────────────────────────────────────────── */
+/* â”€â”€ Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .card {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
@@ -1039,7 +1062,7 @@
   transition: border-color var(--t), box-shadow var(--t), transform var(--t);
 }
 /* Hairline top-light: a 1px gradient seam that catches the eye like a screen
-   bezel — the "futuristic panel" cue, done with a pseudo-element so it costs
+   bezel â€” the "futuristic panel" cue, done with a pseudo-element so it costs
    nothing to paint and never shifts layout. */
 .vp-os .stat-card::before {
   content: "";
@@ -1057,8 +1080,8 @@
 }
 .vp-os .stat-card:hover::before { opacity: 1; }
 /* Attention variant: same panel, warm seam + value. Used where a number is not
-   merely informational — full-control keys granted, a dedicated host that a
-   proxy is answering for — so what needs a decision reads at a glance instead of
+   merely informational â€” full-control keys granted, a dedicated host that a
+   proxy is answering for â€” so what needs a decision reads at a glance instead of
    being one more figure in a row. */
 .vp-os .stat-card--warn { border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); }
 .vp-os .stat-card--warn::before {
@@ -1067,7 +1090,7 @@
 }
 .vp-os .stat-card--warn .stat-card__value { color: var(--warn); }
 
-/* ── Connector detail panel (VayuMCP) ──────────────────────────────────────
+/* â”€â”€ Connector detail panel (VayuMCP) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    A connector's facts as label/value rows rather than a table: the values are
    short and heterogeneous (a masked key, a relative time, a count), so a grid
    reads faster than columns and reflows cleanly on a phone. */
@@ -1115,7 +1138,7 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
-/* Word-valued stat (e.g. an active theme name) — smaller so a long name fits. */
+/* Word-valued stat (e.g. an active theme name) â€” smaller so a long name fits. */
 .vp-os .stat-card__value--sm { font-size: var(--text-xl); line-height: 1.15; word-break: break-word; }
 .vp-os .stat-card__bottom { display: flex; align-items: center; justify-content: space-between; }
 .vp-os .stat-card__trend { font-size: var(--text-xs); font-weight: 600; }
@@ -1123,9 +1146,9 @@
 .vp-os .stat-card__trend--down { color: var(--danger); }
 .vp-os .stat-card__sparkline { display: block; }
 
-/* ── Dashboard workspace (ADR-0141 dashboard redesign) ─────────────────
-   The content areas — Posts, Pages, Comments, Messages, Media, New Post,
-   Website — are surfaced on the dashboard itself as large clickable cards
+/* â”€â”€ Dashboard workspace (ADR-0141 dashboard redesign) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   The content areas â€” Posts, Pages, Comments, Messages, Media, New Post,
+   Website â€” are surfaced on the dashboard itself as large clickable cards
    with live counts and notification badges, so the sidebar stays focused on
    the broader system areas. Each card is a first-class navigation target. */
 .vp-os .section-head {
@@ -1181,7 +1204,7 @@
 .vp-os .work-card__icon svg { width: 20px; height: 20px; }
 .vp-os .work-card__icon--accent { background: var(--accent-dim); color: var(--accent); }
 /* A site's own uploaded mark, in the slot the globe would occupy. contain, not
-   cover, because a logo cropped to fill a square stops being that logo — and
+   cover, because a logo cropped to fill a square stops being that logo â€” and
    these sit beside each other, so one squashed mark reads as a broken card. */
 .vp-os .work-card__mark {
   width: 20px; height: 20px; object-fit: contain; border-radius: 2px; display: block;
@@ -1207,7 +1230,7 @@
 }
 .vp-os .work-card:hover .work-card__arrow { opacity: 1; transform: translateX(0); }
 
-/* Anonymous-world status card — the .onion indicator moved off the sidebar
+/* Anonymous-world status card â€” the .onion indicator moved off the sidebar
    toggle and onto the dashboard, where there is room to show it properly. */
 .vp-os .world-card {
   display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap;
@@ -1231,11 +1254,11 @@
 @media (max-width: 1100px) { .vp-os .work-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px)  { .vp-os .work-grid { grid-template-columns: 1fr; } }
 
-/* ── VayuDomains — premium domain cards & per-site manager (ADR-0141) ────────
+/* â”€â”€ VayuDomains â€” premium domain cards & per-site manager (ADR-0141) â”€â”€â”€â”€â”€â”€â”€â”€
    The domain registry is presented as a responsive grid of premium cards with a
    staggered entrance, replacing the Stage-1 flat table. Each secondary card
    links to its own per-site manager (also surfaced from the Optimize hub) where
-   its branding, content and lifecycle are controlled. Shared by both worlds — in
+   its branding, content and lifecycle are controlled. Shared by both worlds â€” in
    the Tor world the hosts are .onion addresses and the same cards render. */
 .vp-os .domain-grid {
   display: grid; grid-template-columns: repeat(2, 1fr);
@@ -1267,7 +1290,7 @@
   border-color: var(--border-strong);
   background: linear-gradient(135deg, var(--brand-dim), transparent 62%);
 }
-/* Staggered entrance — CSP-safe (no inline styles), driven by document order. */
+/* Staggered entrance â€” CSP-safe (no inline styles), driven by document order. */
 .vp-os .domain-card:nth-child(1) { animation-delay: 0.02s; }
 .vp-os .domain-card:nth-child(2) { animation-delay: 0.07s; }
 .vp-os .domain-card:nth-child(3) { animation-delay: 0.12s; }
@@ -1335,13 +1358,13 @@
 .vp-os .site-hero__sub { margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); font-size: var(--text-xs); color: var(--text-2); }
 .vp-os .site-hero__actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 
-/* ── Grid system ─────────────────────────────────────────────── */
+/* â”€â”€ Grid system â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .grid { display: grid; gap: var(--sp-4); }
 .vp-os .grid-2 { grid-template-columns: repeat(2, 1fr); }
 .vp-os .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .vp-os .grid-4 { grid-template-columns: repeat(4, 1fr); }
 
-/* ── Badges ──────────────────────────────────────────────────── */
+/* â”€â”€ Badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .badge {
   display: inline-flex;
   align-items: center;
@@ -1378,11 +1401,11 @@
 .vp-os .badge--free    { background: var(--bg-surface-3); color: var(--text-2); }
 .vp-os .badge--paid    { background: var(--accent-dim);   color: var(--accent); }
 
-/* ── Space-mode badge (ADR-0141) ─────────────────────────────────
+/* â”€â”€ Space-mode badge (ADR-0141) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Persistent topbar indicator of the world this whole install controls:
    a CLEARNET Space (public HTTPS domain, green) or a TOR Space (anonymous
-   .onion, purple). Fixed per install by VAYUOS_MODE — a status label, not a
-   toggle — so the two worlds are never confused when operating either. The
+   .onion, purple). Fixed per install by VAYUOS_MODE â€” a status label, not a
+   toggle â€” so the two worlds are never confused when operating either. The
    leading dot is a ::before pseudo (no inline style; strict admin CSP). */
 .vp-os .space-badge {
   display: inline-flex;
@@ -1407,11 +1430,11 @@
 .vp-os .space-badge--clearnet { background: var(--ok-dim);     color: var(--ok); }
 .vp-os .space-badge--tor      { background: var(--accent-dim); color: var(--accent); }
 
-/* ── Tor Space palette (ADR-0141) ────────────────────────────────
+/* â”€â”€ Tor Space palette (ADR-0141) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    While the Anonymous Tor Space is live, data-space="tor" on the shell
    repaints the accent/brand tokens purple, so the WHOLE VayuOS chrome
    (active nav, brand, buttons, the sidebar rail) signals the Tor world at a
-   glance. Purely a colour shift — layout and the strict CSP are untouched. */
+   glance. Purely a colour shift â€” layout and the strict CSP are untouched. */
 .vp-os[data-space="tor"] {
   --brand:      #a855f7;
   --brand-dim:  rgba(168, 85, 247, 0.18);
@@ -1424,7 +1447,7 @@
   box-shadow: inset -1px 0 0 var(--accent-dim);
 }
 
-/* ── Form elements ───────────────────────────────────────────── */
+/* â”€â”€ Form elements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .field { display: flex; flex-direction: column; gap: var(--sp-2); }
 .vp-os .field-label {
   font-size: var(--text-sm);
@@ -1483,7 +1506,7 @@
 .vp-os .toggle:checked { background: var(--brand); border-color: var(--brand); }
 .vp-os .toggle:checked::before { transform: translateX(18px); background: #fff; }
 
-/* ── Chips / Tags ────────────────────────────────────────────── */
+/* â”€â”€ Chips / Tags â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .chip {
   display: inline-flex;
   align-items: center;
@@ -1501,20 +1524,20 @@
 .vp-os .chip--removable button { width: 14px; height: 14px; opacity: 0.7; display: flex; align-items: center; justify-content: center; }
 .vp-os .chip--removable button:hover { opacity: 1; }
 
-/* ── Progress ────────────────────────────────────────────────── */
+/* â”€â”€ Progress â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .progress { height: 6px; background: var(--bg-surface-3); border-radius: var(--r-full); overflow: hidden; }
 .vp-os .progress__bar { height: 100%; background: var(--brand); border-radius: var(--r-full); transition: width 0.5s ease; }
 .vp-os .progress__bar--warn { background: var(--warn); }
 .vp-os .progress__bar--danger { background: var(--danger); }
 .vp-os .progress__bar--ok { background: var(--ok); }
 
-/* Sparkline — server-rendered SVG line chart, colour via currentColor (no inline style) */
+/* Sparkline â€” server-rendered SVG line chart, colour via currentColor (no inline style) */
 .vp-os .sparkline-wrap { margin-top: var(--sp-3); color: var(--brand); height: 64px; }
 .vp-os .sparkline { width: 100%; height: 100%; display: block; }
 .vp-os .sparkline__line { fill: none; stroke: currentColor; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
 .vp-os .sparkline__area { fill: var(--brand-dim); stroke: none; opacity: 0.5; }
 
-/* Trend area chart — the dashboard's 14-day publishing trend. Server-rendered
+/* Trend area chart â€” the dashboard's 14-day publishing trend. Server-rendered
    SVG; every colour arrives via these classes (no inline styles, CSP-safe).
    The hover layer is pure CSS: each invisible per-day hit column reveals that
    day's dot + value tooltip. Scales with the card at a fixed aspect ratio. */
@@ -1552,10 +1575,10 @@
 .vp-os .w-75{width:75%}.vp-os .w-80{width:80%}.vp-os .w-85{width:85%}
 .vp-os .w-90{width:90%}.vp-os .w-95{width:95%}.vp-os .w-100{width:100%}
 
-/* ── Inline magnitude bars (analytics) ───────────────────────────
+/* â”€â”€ Inline magnitude bars (analytics) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    A number stacked over a thin proportional bar, so a column of counts reads
    as a tiny bar chart at a glance. The fill width comes from a .w-N class
-   (CSP-safe — no inline styles); this rule only sets the track/fill look, never
+   (CSP-safe â€” no inline styles); this rule only sets the track/fill look, never
    width, so it never fights the width utilities. Folds cleanly into the
    stacked mobile card layout. */
 .vp-os .vs-barcell { display: flex; flex-direction: column; gap: 5px; min-width: 72px; }
@@ -1563,13 +1586,13 @@
 .vp-os .vs-bar { display: block; width: 100%; height: 4px; border-radius: var(--r-full); background: var(--bg-surface-3); overflow: hidden; }
 .vp-os .vs-bar__fill { display: block; height: 100%; min-width: 2px; border-radius: var(--r-full); background: linear-gradient(90deg, var(--brand), var(--accent)); }
 /* On the stacked mobile card, the value+bar sits right-aligned opposite its
-   data-label — let the bar take the available width so it stays readable. */
+   data-label â€” let the bar take the available width so it stays readable. */
 @media (max-width: 640px) {
   .vp-os .table-wrap.vp-stackable .vs-barcell { align-items: flex-end; min-width: 0; flex: 1; }
   .vp-os .table-wrap.vp-stackable .vs-bar { max-width: 160px; }
 }
 
-/* ── Skeleton loaders ────────────────────────────────────────── */
+/* â”€â”€ Skeleton loaders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @keyframes vp3-shimmer {
   0%   { background-position: -400px 0; }
   100% { background-position: 400px 0; }
@@ -1585,7 +1608,7 @@
 .vp-os .skeleton--card { height: 96px; border-radius: var(--r); }
 .vp-os .skeleton--avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }
 
-/* ── Tables ──────────────────────────────────────────────────── */
+/* â”€â”€ Tables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .table-wrap { overflow-x: auto; }
 .vp-os .table {
   width: 100%;
@@ -1654,7 +1677,7 @@
 .vp-os .pf-avatar-empty { font-size: var(--text-xs); color: var(--text-3); padding: 0 6px; text-align: center; }
 .vp-os .search-input { max-width: 320px; }
 
-/* ── Avatar ──────────────────────────────────────────────────── */
+/* â”€â”€ Avatar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .avatar {
   width: 36px; height: 36px;
   border-radius: 50%;
@@ -1676,7 +1699,7 @@
 .vp-os a.sidebar-user { text-decoration: none; color: inherit; }
 .vp-os a.sidebar-user:hover { background: var(--bg-surface-3); border-radius: var(--r-md); }
 
-/* ── Modal ───────────────────────────────────────────────────── */
+/* â”€â”€ Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @keyframes vp3-modal-in {
   from { opacity: 0; transform: scale(0.95) translateY(8px); }
   to   { opacity: 1; transform: scale(1)    translateY(0); }
@@ -1708,7 +1731,7 @@
   animation: vp3-modal-in var(--t-spring) both;
   /* A tall dialog must never grow past the viewport. The backdrop is fixed and
      centres its child, so without a ceiling a long form (the tier editor has a
-     dozen fields) overflows off BOTH edges and its footer — the Save button —
+     dozen fields) overflows off BOTH edges and its footer â€” the Save button â€”
      becomes unreachable, with nothing to scroll because the backdrop itself does
      not scroll. Cap the panel and let the BODY scroll inside it, so the header
      and the actions stay pinned and visible at any height.
@@ -1728,7 +1751,7 @@
   flex: 1 1 auto;
 }
 .vp-os .modal-header, .vp-os .modal-footer { flex: 0 0 auto; }
-.vp-os .modal-panel--lg { max-width: 720px; }
+.vp-os .modal-panel--lg { max-width: 768px; }
 .vp-os .modal-header {
   padding: var(--sp-5) var(--sp-6);
   border-bottom: 1px solid var(--border);
@@ -1754,7 +1777,7 @@
   gap: var(--sp-3);
 }
 
-/* ── Dropdown ────────────────────────────────────────────────── */
+/* â”€â”€ Dropdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .dropdown { position: relative; display: inline-block; }
 .vp-os .dropdown-menu {
   position: absolute;
@@ -1784,7 +1807,7 @@
 .vp-os .dropdown-item--danger:hover { background: var(--danger-dim); color: var(--danger); }
 .vp-os .dropdown-divider { height: 1px; background: var(--border); margin: var(--sp-2) 0; }
 
-/* ── Toast ───────────────────────────────────────────────────── */
+/* â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @keyframes vp3-toast-in  { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes vp3-toast-out { from { transform: translateX(0); opacity: 1; } to { transform: translateX(110%); opacity: 0; } }
 .vp-os .toast-container {
@@ -1814,7 +1837,7 @@
 .vp-os .toast--warn   { border-left: 3px solid var(--warn);   }
 .vp-os .toast.leaving { animation: vp3-toast-out var(--t-exit) both; }
 
-/* ── Kbd ─────────────────────────────────────────────────────── */
+/* â”€â”€ Kbd â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os kbd {
   display: inline-flex;
   align-items: center;
@@ -1829,7 +1852,7 @@
   white-space: nowrap;
 }
 
-/* ── Tabs ────────────────────────────────────────────────────── */
+/* â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .tab-list {
   display: flex;
   gap: var(--sp-1);
@@ -1850,7 +1873,7 @@
 .vp-os .tab:hover { color: var(--text-2); text-decoration: none; }
 .vp-os .tab--active { color: var(--brand); border-bottom-color: var(--brand); }
 
-/* ── Empty state ─────────────────────────────────────────────── */
+/* â”€â”€ Empty state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .empty-state {
   display: flex;
   flex-direction: column;
@@ -1863,7 +1886,7 @@
 .vp-os .empty-title { font-family: var(--font-head); font-size: var(--text-xl); font-weight: 700; }
 .vp-os .empty-sub { font-size: var(--text-sm); color: var(--text-3); max-width: 380px; line-height: 1.6; }
 
-/* ── Utility classes ─────────────────────────────────────────── */
+/* â”€â”€ Utility classes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .muted { color: var(--text-3); }
 .vp-os .text-sm { font-size: var(--text-sm); }
 .vp-os .text-xs { font-size: var(--text-xs); }
@@ -1909,7 +1932,7 @@
   margin-left: var(--sp-2);
 }
 
-/* ── Command palette ─────────────────────────────────────────── */
+/* â”€â”€ Command palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @keyframes vp3-palette-in {
   from { opacity: 0; transform: scale(0.97) translateY(-8px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
@@ -1932,7 +1955,7 @@
 .vp-os .cmd-panel {
   position: relative;
   width: 100%;
-  max-width: 600px;
+  max-width: 640px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 55%, var(--bg-surface)) 0%, var(--bg-surface) 42%);
   border: 1px solid var(--border-strong);
   border-radius: var(--r-lg, 16px);
@@ -1940,7 +1963,7 @@
   overflow: hidden;
   animation: vp3-palette-in var(--t-spring) both;
 }
-/* A brand hairline that sweeps the top edge — the palette's signature. */
+/* A brand hairline that sweeps the top edge â€” the palette's signature. */
 .vp-os .cmd-panel::before {
   content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; z-index: 1;
   background: linear-gradient(90deg, transparent, var(--brand) 30%, var(--accent) 70%, transparent);
@@ -1996,7 +2019,7 @@
 }
 /* The active row advertises the Enter shortcut. */
 .vp-os .cmd-item--active::after {
-  content: "\21B5"; /* ↵ */
+  content: "\21B5"; /* â†µ */
   margin-left: auto; padding-left: var(--sp-3);
   font-size: var(--text-sm); color: var(--brand); opacity: 0.9;
 }
@@ -2040,7 +2063,7 @@
   .vp-os .cmd-input { font-size: var(--text-base); }
 }
 
-/* ── Activity feed ───────────────────────────────────────────── */
+/* â”€â”€ Activity feed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .activity-list { display: flex; flex-direction: column; }
 .vp-os .activity-item {
   display: flex;
@@ -2064,7 +2087,7 @@
 .vp-os .activity-text { font-size: var(--text-sm); color: var(--text); }
 .vp-os .activity-time { font-size: var(--text-xs); color: var(--text-3); margin-top: 2px; }
 
-/* ── Quick compose ───────────────────────────────────────────── */
+/* â”€â”€ Quick compose â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .quick-compose {
   display: flex;
   align-items: center;
@@ -2088,7 +2111,7 @@
 }
 .vp-os .quick-compose-input::placeholder { color: var(--text-3); }
 
-/* ── Health / onboarding checklist ───────────────────────────── */
+/* â”€â”€ Health / onboarding checklist â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .checklist { display: flex; flex-direction: column; gap: var(--sp-2); }
 .vp-os .checklist-item {
   display: flex;
@@ -2117,7 +2140,7 @@
 .vp-os .checklist-label { flex: 1; color: var(--text-2); }
 .vp-os .checklist-item--done .checklist-label { text-decoration: line-through; }
 
-/* ── Settings forms ──────────────────────────────────────────── */
+/* â”€â”€ Settings forms â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .settings-grid { display: grid; grid-template-columns: 280px 1fr; gap: var(--sp-8); align-items: start; }
 .vp-os .settings-section { display: flex; flex-direction: column; gap: var(--sp-6); }
 .vp-os .settings-save-bar {
@@ -2136,8 +2159,8 @@
 .vp-os .settings-row-label { font-size: var(--text-sm); font-weight: 500; color: var(--text); }
 .vp-os .settings-row-hint { font-size: var(--text-xs); color: var(--text-3); margin-top: 2px; }
 
-/* ── Login page ──────────────────────────────────────────────── */
-/* ── Auth pages (sign-in, change-password) ────────────────────────
+/* â”€â”€ Login page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€ Auth pages (sign-in, change-password) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Calm, minimalist, Ghost-style: a single centered card on a clean
    background. Light by default (follows the OS via data-theme="auto");
    an unobtrusive switch offers light / dark / auto. No gradients. */
@@ -2206,7 +2229,7 @@
   margin-bottom: 1.1rem;
 }
 
-/* Theme switch (top-right) — small segmented control. */
+/* Theme switch (top-right) â€” small segmented control. */
 .vp-os .theme-switch {
   position: fixed;
   top: 1rem; right: 1rem;
@@ -2229,12 +2252,12 @@
 .vp-os .theme-opt:hover { color: var(--text); background: var(--bg-surface-2); }
 .vp-os .theme-opt[aria-pressed="true"] { background: var(--brand-dim); color: var(--brand); }
 
-/* ── Editor page ─────────────────────────────────────────────── */
+/* â”€â”€ Editor page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* Layout for the block editor lives in the "Block editor" section below; the
    earlier scaffolding rules were superseded and removed to avoid cascade
    conflicts that broke canvas scrolling. */
 
-/* ── Notification bell badge ─────────────────────────────────── */
+/* â”€â”€ Notification bell badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .notif-btn { position: relative; }
 .vp-os .notif-dot {
   position: absolute;
@@ -2245,7 +2268,7 @@
   border: 2px solid var(--bg-surface);
 }
 
-/* ── Inline spinner ──────────────────────────────────────────── */
+/* â”€â”€ Inline spinner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @keyframes vp3-spin { to { transform: rotate(360deg); } }
 .vp-os [data-loading]::after {
   content: "";
@@ -2259,8 +2282,8 @@
   vertical-align: middle;
 }
 
-/* ── Responsive ──────────────────────────────────────────────── */
-@media (max-width: 1180px) {
+/* â”€â”€ Responsive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+@media (max-width: 1100px) {
   .vp-os .stat-grid { grid-template-columns: repeat(2, 1fr); }
   .vp-os .grid-4 { grid-template-columns: repeat(2, 1fr); }
 }
@@ -2320,13 +2343,13 @@
   .vp-os .bottom-nav { display: none; }
 }
 
-/* ── Print ───────────────────────────────────────────────────── */
+/* â”€â”€ Print â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media print {
   .vp-os .sidebar, .vp-os .topbar, .vp-os .bottom-nav { display: none; }
   .vp-os .main { margin-left: 0; }
 }
 
-/* ── Sidebar overlay (mobile) ────────────────────────────────── */
+/* â”€â”€ Sidebar overlay (mobile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .sidebar-overlay {
   display: none;
   position: fixed; inset: 0;
@@ -2337,10 +2360,10 @@
   .vp-os .sidebar-overlay.open { display: block; }
 }
 
-/* ── Block editor (ADR-0068) ───────────────────────────────────────────────── */
+/* â”€â”€ Block editor (ADR-0068) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* The shell is a two-column grid (writing surface + tool sidebar) with a fixed
    topbar row. It is sized to the viewport beneath the sticky admin topbar so the
-   writing column scrolls internally instead of letting the whole page grow —
+   writing column scrolls internally instead of letting the whole page grow â€”
    this is what lets a long post (or a single tall block) scroll smoothly. */
 .vp-os .editor-shell {
   display: grid;
@@ -2374,7 +2397,7 @@
   border-color: var(--brand);
 }
 
-/* Writing column — owns the scroll. */
+/* Writing column â€” owns the scroll. */
 .vp-os .editor-main {
   min-width: 0;
   min-height: 0;
@@ -2424,7 +2447,7 @@
 .vp-os .editor-canvas::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--r-full); border: 3px solid transparent; background-clip: content-box; }
 .vp-os .editor-canvas::-webkit-scrollbar-thumb:hover { background: var(--text-3); background-clip: content-box; }
 
-/* Split live-preview pane — scrolls independently of the canvas. */
+/* Split live-preview pane â€” scrolls independently of the canvas. */
 .vp-os .editor-live {
   flex: 1 1 50%;
   min-width: 0;
@@ -2449,7 +2472,7 @@
 }
 .vp-os .editor-live-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--sp-5) var(--sp-6); }
 
-/* HTML source mode — fills the writing column and scrolls on its own. */
+/* HTML source mode â€” fills the writing column and scrolls on its own. */
 .vp-os .editor-html {
   flex: 1 1 auto;
   min-width: 0;
@@ -2634,12 +2657,12 @@
   /* Typewriter scrolling needs the canvas to be its own scroll container; on
      mobile the PAGE scrolls (overflow-y: visible above), so the 40vh focus
      padding would just add a phone-screen of dead space and the caret-centring
-     can't run. Neutralise it — mobile browsers already keep the caret above the
+     can't run. Neutralise it â€” mobile browsers already keep the caret above the
      on-screen keyboard, which gives the same "line stays in view" comfort. */
   .vp-os .editor-shell.is-focus .editor-canvas { padding-top: var(--sp-6); padding-bottom: var(--sp-10); }
 }
 
-/* ── Media library (Phase 4, ADR-0068) ─────────────────────────────────────── */
+/* â”€â”€ Media library (Phase 4, ADR-0068) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .media-dropzone {
   border: 2px dashed var(--border-strong);
   border-radius: var(--r-md);
@@ -2701,7 +2724,7 @@
 .vp-os .media-card__copy:hover { background: var(--bg-surface-3); color: var(--text); }
 .vp-os .skeleton--media { aspect-ratio: 4 / 3; height: auto; border-radius: var(--r-md); }
 
-/* ── Security / TOTP enrolment (Phase 5, ADR-0068) ─────────────────────────── */
+/* â”€â”€ Security / TOTP enrolment (Phase 5, ADR-0068) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .totp-key {
   margin-top: var(--sp-3);
   padding: var(--sp-3);
@@ -2715,7 +2738,7 @@
 .eblock__embed-status{display:block;font-size:12px;color:var(--muted,#64748b);margin-top:4px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .eblock__diagram-preview{margin-top:8px;padding:12px;border:1px solid var(--border,#1e2d42);border-radius:6px;background:var(--surface,#0a1018);text-align:center;overflow-x:auto;min-height:40px}.eblock__diagram-preview svg{max-width:100%;height:auto}.eblock__diagram-preview.is-error{color:var(--red,#f87171);font:400 12px/1.5 var(--mono,monospace);text-align:left}.eblock__diagram-preview .vp-diagram__node,.eblock__diagram-preview .vp-diagram__actor{fill:#0e1520;stroke:#6366f1;stroke-width:1.5}.eblock__diagram-preview .vp-diagram__node--round,.eblock__diagram-preview .vp-diagram__node--diamond,.eblock__diagram-preview .vp-diagram__note{fill:#121c2a}.eblock__diagram-preview .vp-diagram__label,.eblock__diagram-preview .vp-diagram__actorlabel,.eblock__diagram-preview .vp-diagram__notetext{fill:#dde6f0}.eblock__diagram-preview .vp-diagram__edge,.eblock__diagram-preview .vp-diagram__msg{stroke:#8a9bb5;fill:none;stroke-width:1.5}.eblock__diagram-preview .vp-diagram__arrowhead{fill:#8a9bb5}.eblock__diagram-preview .vp-diagram__edgelabel,.eblock__diagram-preview .vp-diagram__msglabel{fill:#8a9bb5}.eblock__diagram-preview .vp-diagram__lifeline{stroke:#1e2d42;stroke-dasharray:3 3}
 
-/* ── Tools & Plugins panel (VayuOS foundation) ─────────────────────────────── */
+/* â”€â”€ Tools & Plugins panel (VayuOS foundation) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .tools-cat {
   grid-column: 1 / -1;
   font-family: var(--font-head);
@@ -2787,7 +2810,7 @@
 .vp-os a.tool-card { text-decoration: none; color: inherit; cursor: pointer; }
 .vp-os a.tool-card:hover .tool-card__title { color: var(--brand); }
 
-/* ── AI suggestion overlay ─────────────────────────────────────────────────── */
+/* â”€â”€ AI suggestion overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .ai-suggest {
   margin: 8px 0 4px;
   padding: 12px 14px;
@@ -2813,7 +2836,7 @@
   padding: 6px 12px 2px;
 }
 
-/* ── Version history modal ─────────────────────────────────────────────────── */
+/* â”€â”€ Version history modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .editor-history-modal {
   position: fixed; inset: 0; z-index: 90;
   background: rgba(0,0,0,0.45);
@@ -2871,8 +2894,8 @@
 .vp-os .diff-del { background: var(--danger-dim, rgba(220,53,69,.12)); color: var(--danger, #dc3545); border-radius: 2px; padding: 0 2px; text-decoration: line-through; }
 .vp-os .diff-eq  { color: var(--text-2); }
 
-/* ── Theme Studio ──────────────────────────────────────────────────────────── */
-/* ── Theme Studio — Ghost-style customizer (controls panel + live preview) ─── */
+/* â”€â”€ Theme Studio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€ Theme Studio â€” Ghost-style customizer (controls panel + live preview) â”€â”€â”€ */
 .vp-os .customizer {
   display: grid;
   grid-template-columns: 380px 1fr;
@@ -2886,7 +2909,7 @@
   .vp-os .customizer { grid-template-columns: 1fr; height: auto; }
 }
 
-/* Controls panel — scrolls independently of the sticky preview. */
+/* Controls panel â€” scrolls independently of the sticky preview. */
 .vp-os .customizer__panel {
   display: flex; flex-direction: column; gap: 12px;
   height: 100%; overflow-y: auto; padding-right: 6px;
@@ -2894,7 +2917,7 @@
 @media (max-width: 1100px) { .vp-os .customizer__panel { height: auto; overflow: visible; } }
 
 /* Collapsible control groups. flex:0 0 auto stops a tall open section from being
-   squeezed (and clipped by overflow:hidden) to fit the panel — instead the panel
+   squeezed (and clipped by overflow:hidden) to fit the panel â€” instead the panel
    itself scrolls, so the whole section and all its controls are reachable. */
 .vp-os .cz-group {
   flex: 0 0 auto;
@@ -2909,7 +2932,7 @@
 }
 .vp-os .cz-group__head::-webkit-details-marker { display: none; }
 .vp-os .cz-group__head::after {
-  content: "⌄"; margin-left: auto; font-size: 1rem; color: var(--text-2);
+  content: "âŒ„"; margin-left: auto; font-size: 1rem; color: var(--text-2);
   transition: transform .15s; transform: translateY(-2px) rotate(0deg);
 }
 .vp-os .cz-group--open > .cz-group__head::after { transform: translateY(0) rotate(180deg); }
@@ -2925,7 +2948,7 @@
 .vp-os .cz-group__body { display: none; padding: 4px 16px 16px; border-top: 1px solid var(--border); }
 .vp-os .cz-group--open > .cz-group__body { display: block; }
 
-/* Theme Studio — Monetization-console group summaries. The head keeps its
+/* Theme Studio â€” Monetization-console group summaries. The head keeps its
    .cz-group__head class + aria-expanded (the accordion JS and the jump bar key
    off them) and gains the icon / title / subtitle / chip layout used by the
    Monetization accordions, so the whole console reads as one system. */
@@ -2950,7 +2973,7 @@
 .vp-os .cz-chip--live { color: #34d399; border-color: rgba(52, 211, 153, 0.4); background: rgba(52, 211, 153, 0.12); }
 .vp-os .cz-chip--warn { color: var(--warn); border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.12); }
 .vp-os .cz-chip--bad { color: #f87171; border-color: rgba(248, 113, 113, 0.4); background: rgba(248, 113, 113, 0.12); }
-@media (max-width: 700px) { .vp-os .cz-chip { display: none; } .vp-os .cz-group__sub { white-space: normal; } }
+@media (max-width: 640px) { .vp-os .cz-chip { display: none; } .vp-os .cz-group__sub { white-space: normal; } }
 
 /* Section dividers between groups of controls (mirrors .section-head). */
 .vp-os .cz-sec {
@@ -2980,7 +3003,7 @@
 }
 .vp-os .cz-a11y .table td { padding-top: 6px; padding-bottom: 6px; }
 
-/* Customizer quick-jump chip bar — sticky section navigator. */
+/* Customizer quick-jump chip bar â€” sticky section navigator. */
 .vp-os .cz-jump {
   position: sticky; top: 0; z-index: 3;
   display: flex; flex-wrap: wrap; gap: 6px;
@@ -2995,7 +3018,7 @@
 }
 .vp-os .cz-jump__chip:hover { color: #fff; background: var(--brand); border-color: var(--brand); }
 
-/* Apply button "unsaved changes" state — a subtle ring so the operator knows a
+/* Apply button "unsaved changes" state â€” a subtle ring so the operator knows a
    live preview tweak still needs Applying to persist. */
 .vp-os .btn.is-dirty {
   box-shadow: 0 0 0 2px var(--brand), 0 0 0 4px color-mix(in srgb, var(--brand) 35%, transparent);
@@ -3065,9 +3088,9 @@
 .vp-os .cz-nav-row input[data-nav-label] { flex: 1; min-width: 0; }
 .vp-os .cz-nav-row input[data-nav-href] { flex: 2; min-width: 0; }
 
-/* ── Tumblr-style sliding toggle switches (customizer checkboxes) ──────────────
+/* â”€â”€ Tumblr-style sliding toggle switches (customizer checkboxes) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    The native checkbox is repainted as an iOS/Tumblr pill switch via the CSSOM
-   appearance reset — no JS, no inline styles, CSP-safe. Label text sits on the
+   appearance reset â€” no JS, no inline styles, CSP-safe. Label text sits on the
    left, the switch on the right, mirroring the reference theme editor. */
 .vp-os .cz-check {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -3105,7 +3128,7 @@
 .vp-os .theme-preset__swatch { width: 100%; height: 22px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.06); }
 .vp-os .theme-preset__name { font-size: 0.85rem; font-weight: 600; color: var(--text-1); }
 
-/* ── Theme gallery cards (Tumblr-style visual previews) ────────────────────── */
+/* â”€â”€ Theme gallery cards (Tumblr-style visual previews) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .theme-gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -3151,7 +3174,7 @@
   opacity: 1;
   box-shadow: 0 0 0 1px var(--brand) inset;
 }
-/* ── Theme Studio Waves B/C: harmony, badges, modes, drafts, mobile ─────── */
+/* â”€â”€ Theme Studio Waves B/C: harmony, badges, modes, drafts, mobile â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .cz-gen {
   padding: 10px 12px; margin-bottom: 12px;
   background: var(--bg-surface-2); border: 1px dashed var(--border);
@@ -3190,7 +3213,7 @@
   padding: 0 12px 10px;
 }
 
-/* ── Theme Store (deployable theme catalogue) ──────────────────────────────── */
+/* â”€â”€ Theme Store (deployable theme catalogue) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .store { display: flex; flex-direction: column; gap: 16px; }
 .vp-os .store-toolbar {
   display: flex; align-items: center; justify-content: space-between;
@@ -3270,7 +3293,7 @@
 .vp-os .store-card__deploy[data-store-active="true"] { opacity: 0.7; cursor: default; }
 .vp-os .store-empty { padding: 40px 0; text-align: center; color: var(--text-2); }
 
-/* ── Theme Store live preview overlay (isolated iframe) ────────────────────── */
+/* â”€â”€ Theme Store live preview overlay (isolated iframe) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .store-preview { position: fixed; inset: 0; z-index: 300; display: flex; flex-direction: column; background: rgba(0,0,0,0.62); }
 .vp-os .store-preview[hidden] { display: none; }
 .vp-os .store-preview__bar { display: flex; align-items: center; gap: 0.6rem; padding: 0.7rem 1rem; background: var(--bg-surface); border-bottom: 1px solid var(--border); }
@@ -3291,7 +3314,7 @@
   background: var(--bg-surface-2); border: 1px solid var(--border); border-radius: var(--r-sm);
 }
 
-/* Live preview — consumes the --vp-* custom properties set via CSSOM. */
+/* Live preview â€” consumes the --vp-* custom properties set via CSSOM. */
 .vp-os .theme-prev {
   margin-top: 10px; padding: 20px; border-radius: var(--r-md);
   border: 1px solid var(--border);
@@ -3332,7 +3355,7 @@
 .vp-os .status--warn   { color: var(--warn); }
 .vp-os .status--danger { color: var(--danger, #dc3545); }
 
-/* ── Convert-to-blocks banner (legacy editor → block editor migration) ─────── */
+/* â”€â”€ Convert-to-blocks banner (legacy editor â†’ block editor migration) â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .convert-banner {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   padding: 12px 16px; margin-bottom: 16px;
@@ -3345,7 +3368,7 @@
 
 /* ============================================================
    Operator consoles (System Modes, Policy, Topology, Replay,
-   Faults, ADRs) — ported from the classic console into VayuOS.
+   Faults, ADRs) â€” ported from the classic console into VayuOS.
    ============================================================ */
 @keyframes live-beat{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.8);opacity:.4}}
 @keyframes pulse-ring{0%{transform:scale(.3);opacity:.7}100%{transform:scale(1.9);opacity:0}}
@@ -3513,7 +3536,7 @@
 .action-msg.is-error{border-color:var(--danger)}
 
 /* ============================================================
-   Post manager — status pills + status filter segmented control
+   Post manager â€” status pills + status filter segmented control
    ============================================================ */
 .status-pill{display:inline-flex;align-items:center;gap:.35em;font:600 var(--text-xs) var(--font-body);padding:.2em .6em;border-radius:999px;border:1px solid var(--border);white-space:nowrap}
 .status-pill--live{color:var(--ok);background:var(--ok-dim);border-color:transparent}
@@ -3523,10 +3546,10 @@
 .seg-btn .muted{font-weight:500;opacity:.7;margin-left:.3em}
 .seg-btn:hover{color:var(--text)}
 .seg-btn.is-active{background:var(--bg-surface);color:var(--text);box-shadow:var(--sh-sm)}
-/* Status tabs are now <a> links (server-side filtering) — strip the underline. */
+/* Status tabs are now <a> links (server-side filtering) â€” strip the underline. */
 .vp-os a.seg-btn{text-decoration:none}
 
-/* ── Posts manager: filter bar + pagination (CSP-safe, no inline styles) ───── */
+/* â”€â”€ Posts manager: filter bar + pagination (CSP-safe, no inline styles) â”€â”€â”€â”€â”€ */
 .vp-os .posts-filter{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
 .vp-os .posts-filter .search-input{min-width:200px}
 .vp-os .posts-filter-date{display:inline-flex;align-items:center;gap:.4em;font-size:var(--text-xs);color:var(--text-3);white-space:nowrap}
@@ -3546,14 +3569,14 @@
 .vp-os .pager-jump-label{display:inline-flex;align-items:center;gap:.4em;white-space:nowrap}
 .vp-os .pager-jump-input{width:5em;text-align:center}
 .vp-os .pager-jump-total{white-space:nowrap}
-@media (max-width:720px){
+@media (max-width:768px){
   .vp-os .pager{flex-direction:column;align-items:stretch}
   .vp-os .pager-controls{margin-left:0;justify-content:center}
   .vp-os .pager-jump{justify-content:center}
 }
 
 
-/* ── VayuMail panel (CSP-safe: no inline styles) ───────────────────────────── */
+/* â”€â”€ VayuMail panel (CSP-safe: no inline styles) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vmtabs { display: flex; flex-wrap: wrap; gap: .25rem; margin: .25rem 0 1rem; border-bottom: 1px solid var(--border); }
 .vmtabs .tab { padding: .5rem .85rem; }
 .vm-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-top: .75rem; }
@@ -3587,13 +3610,13 @@
    max-height: 65vh + overflow: auto, which put a scrollbar inside the reading
    pane's scrollbar and squeezed the text into 65% of the window even in full
    view, where a whole screen was available. The pane scrolls; the body flows.
-   Only the raw source keeps a cap (.vm-raw below) — that one really is a dump. */
+   Only the raw source keeps a cap (.vm-raw below) â€” that one really is a dump. */
 .vm-pre { white-space: pre-wrap; word-break: break-word; margin: 0; }
 .vm-stat { font-size: 1.6rem; font-weight: 600; }
 .vm-section-title { margin-top: 1.5rem; }
 .vm-break { word-break: break-all; }
 
-/* ── VayuMail inbox — sticky toolbar, avatars, list polish (v-inbox) ───────── */
+/* â”€â”€ VayuMail inbox â€” sticky toolbar, avatars, list polish (v-inbox) â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vm-poller { display: none; }
 .vp-os .vm-toolbar {
   position: sticky; top: 0; z-index: 6;
@@ -3626,7 +3649,7 @@
 .vp-os .vm-av--img { background: none; padding: 0; overflow: hidden; }
 .vp-os .vm-av--img img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
 
-/* Per-domain mailbox tabs — pure CSS (hidden radio + label + :checked sibling
+/* Per-domain mailbox tabs â€” pure CSS (hidden radio + label + :checked sibling
    rules), so no JS and no inline styles are needed (CSP-safe). Rules are emitted
    for up to 10 domains; installs with more still work, only tabs 11+ won't be
    selectable (no real install has that many mail domains). */
@@ -3686,7 +3709,7 @@
   color: #fff; background: var(--accent); border-radius: 999px;
 }
 
-/* ── VayuMail message reader (v-reader) ────────────────────────────────────── */
+/* â”€â”€ VayuMail message reader (v-reader) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vm-reader-top { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .6rem; }
 .vp-os .vm-reader-nav { display: inline-flex; gap: .25rem; }
 .vp-os .vm-reader-nav [aria-disabled="true"] { opacity: .4; pointer-events: none; }
@@ -3746,7 +3769,7 @@
   .vm-msg-body { max-width: none !important; }
 }
 
-/* ── VayuMail split reading pane (v-split) ─────────────────────────────────── */
+/* â”€â”€ VayuMail split reading pane (v-split) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* List + in-place reader side by side. The reader loads via HTMX into
    #vm-readpane; pane actions fire HX-Trigger:vm-mail-changed to refresh the
    list. Collapses to one column on narrow screens (the pane overlays the list
@@ -3773,7 +3796,7 @@
 .vp-os .vm-split:has(.vm-readpane-empty) { grid-template-columns: 1fr; }
 .vp-os .vm-split:has(.vm-readpane-empty) .vm-readpane { display: none; }
 
-/* Full view (⛶): the open message overlays the work area — but only the area
+/* Full view (â›¶): the open message overlays the work area â€” but only the area
    RIGHT of the fixed sidebar, and above it, so it never slides under the rail.
    left offsets by the sidebar width; z-index clears the sidebar's 200. */
 .vp-os #vm-readpane.vm-readpane--full {
@@ -3820,7 +3843,7 @@
   .vp-os .vm-readpane:has(.vm-reader) { order: -1; margin-bottom: .6rem; }
 }
 
-/* ── VayuMail conversation threading (v-thread) ────────────────────────────── */
+/* â”€â”€ VayuMail conversation threading (v-thread) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vm-thread-count {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 1.5rem; height: 1.25rem; padding: 0 .4rem; margin-left: .4rem;
@@ -3833,15 +3856,15 @@
 .vp-os tr.vm-thread-child > td { background: color-mix(in srgb, var(--border) 40%, transparent); }
 .vp-os tr.vm-thread-child .vm-subj { padding-left: 1.4rem; }
 
-/* ── VayuMail vacation autoresponder (v-ooo) ───────────────────────────────── */
+/* â”€â”€ VayuMail vacation autoresponder (v-ooo) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vm-ooo { border: 1px solid var(--border); border-radius: 10px; padding: .35rem .65rem; margin: 0 0 .5rem; }
 .vp-os .vm-ooo > summary { cursor: pointer; display: flex; align-items: center; gap: .6rem; padding: .3rem 0; list-style: none; }
-.vp-os .vm-ooo > summary::before { content: "▸"; opacity: .6; }
-.vp-os .vm-ooo[open] > summary::before { content: "▾"; }
+.vp-os .vm-ooo > summary::before { content: "â–¸"; opacity: .6; }
+.vp-os .vm-ooo[open] > summary::before { content: "â–¾"; }
 .vp-os .vm-ooo-form { display: flex; flex-direction: column; gap: .6rem; padding: .5rem 0 .65rem; }
 .vp-os .vm-ooo-form textarea { resize: vertical; }
 
-/* ── VayuMail composer (v-compose) ─────────────────────────────────────────── */
+/* â”€â”€ VayuMail composer (v-compose) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vm-row--tight { margin: 0 0 .65rem; }
 .vp-os .vm-compose-actions { align-items: center; }
 
@@ -3896,7 +3919,7 @@
 .vp-os .vm-pgp-hint--enc { color: var(--ok); }
 @media (max-width: 640px) { .vp-os .vm-pgp-hint { margin-left: 0; flex-basis: 100%; } }
 
-/* ── VayuMail search (v-search) ────────────────────────────────────────────── */
+/* â”€â”€ VayuMail search (v-search) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vm-search-form { margin: .5rem 0 1rem; }
 .vp-os .vm-search-row { display: flex; gap: .5rem; align-items: center; }
 .vp-os .vm-search-row .input { flex: 1 1 auto; }
@@ -3909,7 +3932,7 @@
 .vp-os .vm-search-count { margin: .25rem 0 .6rem; }
 .vp-os mark { background: var(--warn-dim); color: var(--text); border-radius: 3px; padding: 0 .12em; }
 
-/* ── VayuMail keyboard shortcuts: list cursor + help overlay (v-keys) ───────── */
+/* â”€â”€ VayuMail keyboard shortcuts: list cursor + help overlay (v-keys) â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vm-list tbody tr:hover { background: var(--bg-surface-2); }
 .vp-os tr.vm-focus { background: var(--accent-dim); box-shadow: inset 3px 0 0 var(--accent); }
 
@@ -3934,7 +3957,7 @@
 .vp-os .vm-help-foot { margin-top: .95rem; }
 
 
-/* Live analytics indicator — pulsing dot next to the "Live" card title. */
+/* Live analytics indicator â€” pulsing dot next to the "Live" card title. */
 .vp-os .live-dot {
   display: inline-block;
   width: 0.6rem;
@@ -3954,15 +3977,15 @@
 }
 
 
-/* ── Editor: focus (distraction-free) mode & drop states ─────────────────── */
+/* â”€â”€ Editor: focus (distraction-free) mode & drop states â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* Focus mode hides the tool sidebar and widens the writing column so nothing
-   competes with the prose; the topbar stays for quick exit (⌘. toggles it). */
+   competes with the prose; the topbar stays for quick exit (âŒ˜. toggles it). */
 .vp-os .editor-shell.is-focus { grid-template-columns: minmax(0, 1fr); }
 .vp-os .editor-shell.is-focus .editor-sidebar { display: none; }
 .vp-os .editor-shell.is-focus .editor-canvas { padding-left: max(var(--sp-4), calc((100% - 820px) / 2)); padding-right: max(var(--sp-4), calc((100% - 820px) / 2)); }
 /* Typewriter room is defined once, authoritatively, further down (after the
    base focus padding rule) so it always wins the cascade on desktop while never
-   applying on mobile — see the min-width:901px block near .editor-canvas base
+   applying on mobile â€” see the min-width:901px block near .editor-canvas base
    padding. Keeping a single source of truth avoids the ordering bug where a
    later unconditional padding-top silently defeated it. */
 .vp-os .editor-shell.is-focus .editor-title { max-width: 820px; margin-left: auto; margin-right: auto; padding-left: var(--sp-1); }
@@ -3986,7 +4009,7 @@
   border-radius: var(--r-md);
 }
 
-/* ── Editor: inline formatting toolbar (floating on text selection) ───────── */
+/* â”€â”€ Editor: inline formatting toolbar (floating on text selection) â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .fmt-bar {
   position: absolute;
   display: none;
@@ -4015,7 +4038,7 @@
 .vp-os .fmt-bar__btn--i { font-style: italic; font-family: Georgia, serif; }
 .vp-os .fmt-bar__btn--s { text-decoration: line-through; }
 
-/* ── Editor: slash-palette filter input ───────────────────────────────────── */
+/* â”€â”€ Editor: slash-palette filter input â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .block-palette__search {
   width: 100%;
   box-sizing: border-box;
@@ -4029,7 +4052,7 @@
 }
 .vp-os .block-palette__search::placeholder { color: var(--text-3); }
 
-/* ── Editor: image drag-and-drop affordance ───────────────────────────────── */
+/* â”€â”€ Editor: image drag-and-drop affordance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os [data-editor-canvas].is-dragover {
   outline: 2px dashed var(--brand);
   outline-offset: 6px;
@@ -4037,7 +4060,7 @@
 }
 
 
-/* ── Theme Studio: custom CSS / code editor ───────────────────────────────── */
+/* â”€â”€ Theme Studio: custom CSS / code editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os textarea.theme-code {
   width: 100%;
   box-sizing: border-box;
@@ -4053,12 +4076,12 @@
 }
 
 
-/* ══════════════════════════════════════════════════════════════════════════
-   Post editor v1.14.0 — new blocks, reordering, focus mode, split preview,
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   Post editor v1.14.0 â€” new blocks, reordering, focus mode, split preview,
    live stats, palette polish. (Strict CSP: classes only, no inline styles.)
-   ══════════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ── Topbar word-count chip ─────────────────────────────────────────────── */
+/* â”€â”€ Topbar word-count chip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .editor-wordcount {
   font-size: var(--text-xs);
   color: var(--text-3);
@@ -4069,7 +4092,7 @@
 }
 .vp-os .btn.is-active { background: var(--brand-dim); color: var(--brand); border-color: var(--brand); }
 
-/* ── Workspace: canvas + optional split live-preview ────────────────────── */
+/* â”€â”€ Workspace: canvas + optional split live-preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .editor-workspace { display: flex; gap: var(--sp-5); align-items: stretch; min-width: 0; }
 .vp-os .editor-workspace > .editor-canvas { flex: 1 1 auto; min-width: 0; }
 .vp-os .editor-live {
@@ -4092,7 +4115,7 @@
 .vp-os .editor-live-body { font-size: var(--text-base); line-height: 1.7; }
 @keyframes vp3-enter { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
 
-/* ── Sidebar live stats ─────────────────────────────────────────────────── */
+/* â”€â”€ Sidebar live stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .editor-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -4105,7 +4128,7 @@
 .vp-os .editor-stat__num { font-size: var(--text-lg); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
 .vp-os .editor-stat__label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
 
-/* ── Live document outline ────────────────────────────────────────────────
+/* â”€â”€ Live document outline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Mirrors the post's heading structure; entries indent by level and the
    section the caret is in stays highlighted. Scrolls internally past ~14
    entries so a long document never pushes the sidebar tools off-screen. */
@@ -4129,7 +4152,7 @@
 .vp-os .editor-outline__item--l3 { padding-left: calc(var(--sp-2) + var(--sp-4)); }
 .vp-os .editor-outline__item--l4 { padding-left: calc(var(--sp-2) + var(--sp-8)); }
 
-/* ── Block control rail (drag, move, insert, delete) ────────────────────── */
+/* â”€â”€ Block control rail (drag, move, insert, delete) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .eblock__ctrl { flex-direction: column; gap: 2px; }
 .vp-os .eblock__drag { cursor: grab; }
 .vp-os .eblock__drag:active { cursor: grabbing; }
@@ -4154,7 +4177,7 @@
 .vp-os .eblock.is-drop-before { box-shadow: 0 -2px 0 0 var(--brand); }
 .vp-os .eblock.is-drop-after  { box-shadow: 0 2px 0 0 var(--brand); }
 
-/* ── Task-list block editor ─────────────────────────────────────────────── */
+/* â”€â”€ Task-list block editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .eblock__tasks { display: flex; flex-direction: column; gap: var(--sp-1); }
 .vp-os .eblock__task { display: flex; align-items: center; gap: var(--sp-2); }
 .vp-os .eblock__task-check { width: 16px; height: 16px; accent-color: var(--brand); flex: 0 0 auto; cursor: pointer; }
@@ -4174,7 +4197,7 @@
 }
 .vp-os .eblock__addrow:hover { color: var(--brand); border-color: var(--brand); }
 
-/* ── Table block editor ─────────────────────────────────────────────────── */
+/* â”€â”€ Table block editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .eblock__table { display: flex; flex-direction: column; gap: var(--sp-2); overflow-x: auto; }
 .vp-os .eblock__table-grid { border-collapse: collapse; width: 100%; }
 .vp-os .eblock__table-grid th, .vp-os .eblock__table-grid td { border: 1px solid var(--border); padding: 2px; vertical-align: middle; }
@@ -4184,17 +4207,17 @@
 .vp-os .eblock__table-rowctl { width: 30px; text-align: center; border: none !important; }
 .vp-os .eblock__table-ctl { display: flex; gap: var(--sp-2); }
 
-/* ── Toggle / math / hint helpers ───────────────────────────────────────── */
+/* â”€â”€ Toggle / math / hint helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .eblock__checkline { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--text-sm); color: var(--text-2); cursor: pointer; }
 .vp-os .eblock__checkline input { accent-color: var(--brand); }
 .vp-os .eblock__hint { margin-top: 2px; }
 .vp-os .eblock--toggle .eblock__field { border-left: 3px solid var(--accent); padding-left: var(--sp-3); }
 .vp-os .eblock--math .eblock__code { font-family: var(--font-mono); }
 
-/* ── Slash palette: keyboard highlight ──────────────────────────────────── */
+/* â”€â”€ Slash palette: keyboard highlight â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .block-palette__item.is-active { background: var(--brand-dim); outline: 1px solid var(--brand); }
 
-/* ── Focus (distraction-free) mode ──────────────────────────────────────── */
+/* â”€â”€ Focus (distraction-free) mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .editor-shell.is-focus { grid-template-columns: 1fr; }
 .vp-os .editor-shell.is-focus .editor-sidebar { display: none; }
 .vp-os .editor-shell.is-focus .editor-topbar { background: transparent; border-bottom-color: transparent; }
@@ -4202,11 +4225,11 @@
 .vp-os .editor-shell.is-focus .editor-wordcount { opacity: 0.6; }
 .vp-os .editor-shell.is-focus .editor-main { max-width: 760px; margin: 0 auto; width: 100%; }
 .vp-os .editor-shell.is-focus .editor-canvas { padding-top: var(--sp-8); }
-/* Typewriter room (DESKTOP ONLY) — authoritative, placed last so it wins the
+/* Typewriter room (DESKTOP ONLY) â€” authoritative, placed last so it wins the
    cascade on wide screens where the canvas itself scrolls: enough top/bottom
    space that the first and last lines can still reach the vertical centre when
    the editor JS centres the caret line. On mobile (<=900px) the PAGE scrolls,
-   so this never applies and the small base padding above is used — no phone
+   so this never applies and the small base padding above is used â€” no phone
    ever shows ~40vh of empty space. */
 @media (min-width: 901px) {
   .vp-os .editor-shell.is-focus .editor-canvas { padding-top: 40vh; padding-bottom: 40vh; }
@@ -4219,10 +4242,10 @@
   .vp-os .editor-live { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: var(--sp-4); }
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Rendered block styles (admin preview + live pane). These mirror the classes
    emitted by internal/blockrender so Preview/Split match the published page.
-   ══════════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 /* Table */
 .vp-os .article .vp-table { overflow-x: auto; margin: var(--sp-5) 0; }
@@ -4235,7 +4258,7 @@
 .vp-os .article .vp-toggle { border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4); margin: var(--sp-4) 0; background: var(--bg-surface); }
 .vp-os .article .vp-toggle > summary { cursor: pointer; font-weight: 600; color: var(--text); list-style: none; }
 .vp-os .article .vp-toggle > summary::-webkit-details-marker { display: none; }
-.vp-os .article .vp-toggle > summary::before { content: "▸"; display: inline-block; margin-right: var(--sp-2); color: var(--brand); transition: transform var(--t-fast); }
+.vp-os .article .vp-toggle > summary::before { content: "â–¸"; display: inline-block; margin-right: var(--sp-2); color: var(--brand); transition: transform var(--t-fast); }
 .vp-os .article .vp-toggle[open] > summary::before { transform: rotate(90deg); }
 .vp-os .article .vp-toggle__body { margin-top: var(--sp-3); color: var(--text-2); }
 
@@ -4244,7 +4267,7 @@
 .vp-os .article .vp-task { display: flex; align-items: flex-start; gap: var(--sp-2); padding: 2px 0; }
 .vp-os .article .vp-task__box { flex: 0 0 auto; width: 16px; height: 16px; margin-top: 3px; border: 2px solid var(--border-strong); border-radius: 4px; }
 .vp-os .article .vp-task--done .vp-task__box { background: var(--brand); border-color: var(--brand); position: relative; }
-.vp-os .article .vp-task--done .vp-task__box::after { content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; line-height: 1; }
+.vp-os .article .vp-task--done .vp-task__box::after { content: "âœ“"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; line-height: 1; }
 .vp-os .article .vp-task--done .vp-task__text { text-decoration: line-through; color: var(--text-3); }
 
 /* Math */
@@ -4270,7 +4293,7 @@
 .vp-os .vm-search .input { flex: 1 1 auto; }
 
 
-/* ── VayuAnalytics dashboard polish (metric deltas, privacy note, mobile) ──── */
+/* â”€â”€ VayuAnalytics dashboard polish (metric deltas, privacy note, mobile) â”€â”€â”€â”€ */
 .vp-os .vm-stat-row { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
 .vp-os .vm-delta {
   display: inline-flex;
@@ -4301,7 +4324,7 @@
 /* Period selector: subtle "loading" cue while the next window is fetched. */
 .vp-os [data-period].is-loading { opacity: 0.5; pointer-events: none; }
 .vp-os [data-period].is-loading::after {
-  content: "Loading…";
+  content: "Loadingâ€¦";
   margin-left: var(--sp-2);
   font-size: var(--text-xs);
   color: var(--text-3);
@@ -4309,19 +4332,19 @@
 }
 
 /* Mobile: stack the multi-column analytics grids and keep tables swipeable. */
-@media (max-width: 860px) {
+@media (max-width: 900px) {
   .vp-os .grid-2,
   .vp-os .grid-3,
   .vp-os .vm-metrics.grid-4 { grid-template-columns: 1fr; }
 }
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .vp-os .table-wrap { -webkit-overflow-scrolling: touch; }
   .vp-os .vm-stat { font-size: 1.35rem; }
 }
 
 
-/* ── VayuAnalytics: tabbed layout + premium live view ──────────────────────── */
-/* Tab bar (buttons) — clean wrapping pills. Wraps onto multiple lines instead
+/* â”€â”€ VayuAnalytics: tabbed layout + premium live view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Tab bar (buttons) â€” clean wrapping pills. Wraps onto multiple lines instead
    of showing a horizontal scrollbar, so every section is reachable at a glance. */
 .vp-os .vm-analytics-tabs {
   display: flex;
@@ -4358,7 +4381,7 @@
 @keyframes vm-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .vp-os .vm-tab-panel { animation: none; } }
 
-/* Live hero card — big active-visitor count with a radar-pulse motif. The card
+/* Live hero card â€” big active-visitor count with a radar-pulse motif. The card
    is a two-column flex: headline metric on the left, concentric pulse rings on
    the right. All motion is transform/opacity only (GPU-cheap) and disabled under
    prefers-reduced-motion. */
@@ -4393,7 +4416,7 @@
 .vp-os .vm-live-sub { margin-top: var(--sp-2); }
 .vp-os .vm-live-updated { color: var(--text-3); margin-left: 0.35em; }
 
-/* Concentric radar rings — three expanding circles staggered in time. */
+/* Concentric radar rings â€” three expanding circles staggered in time. */
 .vp-os .vm-live-rings {
   position: relative;
   width: 92px;
@@ -4427,7 +4450,7 @@
 .vp-os .vm-live-list .vp-bar--enter:nth-child(5) { animation-delay: 0.12s; }
 @keyframes vm-bar-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 
-/* Derived-engagement strip — GDPR-safe ratios under the headline metrics. */
+/* Derived-engagement strip â€” GDPR-safe ratios under the headline metrics. */
 .vp-os .vm-engage {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -4456,7 +4479,7 @@
 }
 
 /* Country flags: real self-hosted SVG images (flag-icons, MIT), so they render
-   identically on every platform — including Windows, which omits flag emoji
+   identically on every platform â€” including Windows, which omits flag emoji
    from its system font. The country name is always shown alongside. */
 .vp-os .vp-flag-img {
   display: inline-block;
@@ -4477,7 +4500,7 @@
   box-shadow: none;
 }
 
-/* Geography — long country/region/city lists scroll inside their card so the
+/* Geography â€” long country/region/city lists scroll inside their card so the
    page never becomes one endless column. */
 .vp-os .vp-geo-scroll { max-height: 340px; overflow-y: auto; padding-right: 4px; }
 .vp-os .vp-geo-scroll::-webkit-scrollbar { width: 8px; }
@@ -4503,7 +4526,7 @@
 .vp-os .vp-geo-setup__alt { font-size: var(--text-xs); color: var(--text-3); margin: 0; }
 .vp-os .vp-geo-setup code { background: var(--bg-surface-2); padding: 1px 5px; border-radius: 4px; font-size: 0.85em; }
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
   .vp-os .vm-live-grid { grid-template-columns: 1fr; }
   .vp-os .vm-live-count { font-size: 2.4rem; }
   .vp-os .vm-engage { grid-template-columns: repeat(2, 1fr); }
@@ -4514,7 +4537,7 @@
 }
 
 
-/* ── Update & Backup panel (admin_os_update.go) ──────────────────────────── */
+/* â”€â”€ Update & Backup panel (admin_os_update.go) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .settings-callout {
   display: flex;
   flex-direction: column;
@@ -4609,12 +4632,12 @@
 }
 .vp-os [data-update-msg].is-error,
 .vp-os [data-backup-msg].is-error { color: var(--danger, #ef4444); }
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .vp-os .update-row { grid-template-columns: 1fr; }
 }
 
 
-/* ── Editor: Post settings drawer (publishing options) ───────────────────── */
+/* â”€â”€ Editor: Post settings drawer (publishing options) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .editor-settings-backdrop {
   position: fixed;
   inset: 0;
@@ -4720,17 +4743,17 @@
 .vp-os .pm-group[open] { padding-bottom: var(--sp-4); }
 .vp-os .pm-group > summary { cursor: pointer; font-weight: 600; font-size: var(--text-sm); color: var(--text-2); list-style: none; }
 .vp-os .pm-group > summary::-webkit-details-marker { display: none; }
-.vp-os .pm-group > summary::after { content: "▸"; float: right; color: var(--text-3); transition: transform var(--t-fast); }
+.vp-os .pm-group > summary::after { content: "â–¸"; float: right; color: var(--text-3); transition: transform var(--t-fast); }
 .vp-os .pm-group[open] > summary::after { transform: rotate(90deg); }
 .vp-os .pm-group .pm-field { margin-top: var(--sp-3); }
 .vp-os .pm-subhead { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); margin-top: var(--sp-3); }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .vp-os .editor-settings { width: 100vw; }
 }
 
 
-/* ── Editor: image card row, gallery editor ──────────────────────────────── */
+/* â”€â”€ Editor: image card row, gallery editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .eblock__row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .vp-os .eblock__row .eblock__input { flex: 1 1 200px; }
 
@@ -4765,7 +4788,7 @@
 .vp-os .eblock__gallery-del:hover { background: var(--color-danger, #ef4444); }
 
 
-/* ── ADR Registry ────────────────────────────────────────────── */
+/* â”€â”€ ADR Registry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .adr-list { display: flex; flex-direction: column; gap: 6px; }
 .vp-os a.adr-row {
   display: flex; align-items: center; gap: 14px;
@@ -4829,9 +4852,9 @@
 
 
 /* ============================================================================
-   VayuOS — Mobile app experience (responsive enhancement layer)
+   VayuOS â€” Mobile app experience (responsive enhancement layer)
    Loaded last so it refines the base rules above. Goals: native-app feel on
-   phones — comfortable touch targets, safe-area awareness, no iOS focus-zoom,
+   phones â€” comfortable touch targets, safe-area awareness, no iOS focus-zoom,
    a wide tap-to-close drawer, an app-style bottom bar, and wide data tables
    that fold into readable cards instead of forcing a horizontal scroll.
    ========================================================================== */
@@ -4848,7 +4871,7 @@
   .vp-os .shell { min-height: 100dvh; }
 }
 
-/* ── Touch targets ─────────────────────────────────────────────
+/* â”€â”€ Touch targets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Only on real touch / coarse-pointer devices, so the desktop density is
    untouched. 44px is the Apple/Android minimum comfortable hit area. */
 @media (hover: none) and (pointer: coarse) {
@@ -4865,7 +4888,7 @@
   .vp-os textarea { min-height: 42px; }
 }
 
-/* ── Phone layout (≤768px) ─────────────────────────────────────
+/* â”€â”€ Phone layout (â‰¤768px) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Refines the existing mobile block: a wider drawer, no iOS focus-zoom,
    a compact topbar, and safe-area-aware spacing. */
 @media (max-width: 768px) {
@@ -4902,8 +4925,8 @@
   .vp-os .card { padding: var(--sp-4); }
 }
 
-/* ── App-style bottom bar ──────────────────────────────────────
-   The shared bottom nav is shown ≤768px. Make it safe-area aware, give it
+/* â”€â”€ App-style bottom bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   The shared bottom nav is shown â‰¤768px. Make it safe-area aware, give it
    clear active state, and respect items hidden by the role filter (JS). */
 @media (max-width: 768px) {
   .vp-os .bottom-nav {
@@ -4927,7 +4950,7 @@
   .vp-os .content { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 }
 
-/* ── Responsive data tables → cards (≤640px) ───────────────────
+/* â”€â”€ Responsive data tables â†’ cards (â‰¤640px) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    JS (initResponsiveTables) stamps each cell with data-label from its column
    header and flags qualifying wrappers with .vp-stackable. Here we fold those
    tables into labelled cards so wide tables stay readable without a horizontal
@@ -4993,7 +5016,7 @@
   background: var(--warn-dim);
 }
 
-/* ── Analytics charts (server-rendered SVG, CSP-safe) ─────────────── */
+/* â”€â”€ Analytics charts (server-rendered SVG, CSP-safe) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os {
   --chart-1: #0ea5e9; --chart-2: #a78bfa; --chart-3: #22c55e; --chart-4: #f59e0b;
   --chart-5: #ec4899; --chart-6: #ef4444; --chart-7: #06b6d4; --chart-8: #8b5cf6;
@@ -5055,8 +5078,8 @@
 .vp-os .vp-trend-line--pv { stroke: var(--chart-1); }
 .vp-os .vp-trend-line--vis { stroke: var(--chart-2); stroke-dasharray: 4 3; }
 
-/* ── Interactive hover layer: guide line, dots and a styled tooltip, revealed by
-   pure CSS on band :hover (no JS, no inline styles). ─────────────────────────── */
+/* â”€â”€ Interactive hover layer: guide line, dots and a styled tooltip, revealed by
+   pure CSS on band :hover (no JS, no inline styles). â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vp-pt__hit { fill: transparent; cursor: crosshair; }
 .vp-os .vp-pt__guide { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; vector-effect: non-scaling-stroke; }
 .vp-os .vp-pt__dot { opacity: 0; stroke: var(--surface-1); stroke-width: 1.5; }
@@ -5089,7 +5112,7 @@
   .vp-os .vp-pt__guide, .vp-os .vp-pt__dot, .vp-os .vp-pt__tip { transition: none; }
 }
 
-/* ── Editor: Ghost-style writing surface ─────────────────────────────────────
+/* â”€â”€ Editor: Ghost-style writing surface â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    A calm, centered, chrome-free writing measure. Block controls stay invisible
    until the writer reaches for them; text sits at a book-like size on a quiet
    surface. Overrides the utilitarian editor defaults above (same specificity,
@@ -5139,7 +5162,7 @@
   background: var(--brand-dim);
 }
 
-/* ── VayuMail: rotating setup QR + refined mail surface ──────────────────────
+/* â”€â”€ VayuMail: rotating setup QR + refined mail surface â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Clean, modern-minimalist presentation: generous whitespace, flat surfaces,
    no gradients. The QR page is a single calm card built to be scanned. */
 .vp-os .vm-qr-card { max-width: 46rem; }
@@ -5170,7 +5193,7 @@
 /* Mail list rows: calmer separators, roomier touch targets. */
 .vp-os .vm-list .vm-row-item { padding-block: 0.65rem; }
 
-/* ── Website studio (business site) ─────────────────────────────────────────*/
+/* â”€â”€ Website studio (business site) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€*/
 .vp-os .biz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--sp-3); }
 .vp-os .biz-card {
   text-align: left;
@@ -5193,7 +5216,7 @@
 .vp-os .biz-form { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); }
 .vp-os .biz-form-col { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
 .vp-os .biz-form .pm-label { margin-top: var(--sp-2); }
-@media (max-width: 800px) { .vp-os .biz-form { grid-template-columns: 1fr; } }
+@media (max-width: 768px) { .vp-os .biz-form { grid-template-columns: 1fr; } }
 /* The .zip deploy row: file picker, Deploy, optional Roll back, status. It was
    the div's only class and had no rule, so the controls ran together with no
    spacing and the status text sat flush against the last button. */
@@ -5210,7 +5233,7 @@
 /* Vertical rhythm between the console's cards/forms/details. */
 .vp-os .vs-page { display: flex; flex-direction: column; gap: var(--sp-5); }
 
-/* ── Status hero ─────────────────────────────────────────────── */
+/* â”€â”€ Status hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vs-hero {
   display: flex;
   flex-wrap: wrap;
@@ -5240,7 +5263,7 @@
 .vp-os .vs-lead { margin: calc(-1 * var(--sp-2)) 0 var(--sp-3); }
 .vp-os .vs-section { margin-top: var(--sp-6); padding-top: var(--sp-5); border-top: 1px solid var(--border); }
 
-/* ── Aegis defense-layer map ─────────────────────────────────── */
+/* â”€â”€ Aegis defense-layer map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vs-aegis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--sp-3); }
 .vp-os .vs-layer { display: flex; gap: var(--sp-3); align-items: flex-start; padding: var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg-surface-2); }
 .vp-os .vs-layer-tag { font-family: var(--font-head); font-weight: 700; font-size: var(--text-sm); color: var(--text-2); border: 1px solid var(--border-strong); border-radius: var(--r-sm); padding: 2px 6px; flex: none; }
@@ -5260,18 +5283,18 @@
 .vp-os .vs-layer.is-hot .vs-layer-tag { color: var(--warn, #d97706); border-color: var(--warn, #d97706); }
 .vp-os .vs-layer.is-off { opacity: 0.65; }
 
-/* ── Ephemeral save-feedback toast ───────────────────────────── */
+/* â”€â”€ Ephemeral save-feedback toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vs-toast { position: fixed; bottom: var(--sp-6); left: 50%; transform: translate(-50%, 12px); opacity: 0; background: var(--bg-surface); color: var(--text); border: 1px solid var(--ok); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-5); font-size: var(--text-sm); box-shadow: var(--shadow-lg, 0 8px 30px rgba(0,0,0,.25)); z-index: 200; transition: opacity .3s ease, transform .3s ease; pointer-events: none; }
 .vp-os .vs-toast.is-in { opacity: 1; transform: translate(-50%, 0); }
 
-/* ── Feature rows ────────────────────────────────────────────── */
+/* â”€â”€ Feature rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vs-feat { border-top: 1px solid var(--border); }
 .vp-os .vs-feat:first-of-type { border-top: 0; }
 .vp-os .vs-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); padding: var(--sp-4) 0; }
 .vp-os .vs-row-title { font-weight: 600; color: var(--text); }
 .vp-os .vs-row-desc { color: var(--text-2); font-size: var(--text-sm); margin-top: var(--sp-1); max-width: 64ch; }
 
-/* ── Toggle switch ───────────────────────────────────────────── */
+/* â”€â”€ Toggle switch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vs-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex: none; }
 .vp-os .vs-switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
 .vp-os .vs-slider { position: absolute; inset: 0; background: var(--bg-surface-3); border: 1px solid var(--border-strong); border-radius: var(--r-full); transition: background var(--t), border-color var(--t); }
@@ -5280,7 +5303,7 @@
 .vp-os .vs-switch input:checked + .vs-slider::before { transform: translateX(20px); background: #fff; }
 .vp-os .vs-switch input:focus-visible + .vs-slider { box-shadow: 0 0 0 3px var(--brand-glow); }
 
-/* ── Advanced disclosure (revealed only when its master toggle is on) ── */
+/* â”€â”€ Advanced disclosure (revealed only when its master toggle is on) â”€â”€ */
 .vp-os .vs-adv {
   display: none;
   flex-wrap: wrap;
@@ -5307,7 +5330,7 @@
 .vp-os .vs-field--tog { flex-direction: row; align-items: center; gap: var(--sp-3); }
 .vp-os .vs-field--tog label { text-transform: none; font-size: var(--text-sm); color: var(--text); }
 
-/* ── Operator policy fields ──────────────────────────────────────
+/* â”€â”€ Operator policy fields â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    vs-adv--open is an advanced block with no master toggle above it: the
    operator's own allow/deny lists are the section, not a detail of one, so
    they must be visible without a switch to reveal them. */
@@ -5330,13 +5353,13 @@
 .vp-os .vs-field--area textarea::placeholder { color: var(--text-3); opacity: 0.7; }
 .vp-os .vs-field--area p { margin: 0; max-width: 62ch; }
 
-/* ── Save bar ────────────────────────────────────────────────── */
+/* â”€â”€ Save bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vs-save { display: flex; align-items: center; gap: var(--sp-4); padding-top: var(--sp-5); margin-top: var(--sp-4); border-top: 1px solid var(--border); flex-wrap: wrap; }
 
-/* ── Network hardening <details> ─────────────────────────────── */
+/* â”€â”€ Network hardening <details> â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vs-summary { cursor: pointer; margin-bottom: 0; -webkit-user-select: none; user-select: none; }
 .vp-os details[open] .vs-summary { margin-bottom: var(--sp-4); }
-/* Per-section HTMX "Refresh" control — a right-aligned pill at the top of a
+/* Per-section HTMX "Refresh" control â€” a right-aligned pill at the top of a
    refreshable section body; its icon spins while the fetch is in flight. */
 .vp-os .vs-sec-tools { display: flex; justify-content: flex-end; margin-bottom: var(--sp-3); }
 .vp-os .vs-refresh-btn { display: inline-flex; align-items: center; gap: 0.4em; font-size: var(--text-xs); font-weight: 600; color: var(--text-2); background: var(--bg-surface-2); border: 1px solid var(--border); border-radius: var(--r-full); padding: 0.3rem 0.75rem; cursor: pointer; line-height: 1; transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast); }
@@ -5348,7 +5371,7 @@
 @keyframes vs-spin { to { transform: rotate(360deg); } }
 
 /* Flattened engagement sub-sections inside the single "Engagement analytics"
-   card — a light top rule instead of a nested card per report. */
+   card â€” a light top rule instead of a nested card per report. */
 .vp-os .vs-subsection { margin-top: var(--sp-5); padding-top: var(--sp-4); border-top: 1px solid var(--border); }
 .vp-os .vs-subsection:first-of-type { margin-top: var(--sp-2); padding-top: 0; border-top: 0; }
 
@@ -5365,8 +5388,8 @@
    + on/off button on the right. */
 .vp-os .vs-hard-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; }
 .vp-os .vs-hard-ctl { display: flex; align-items: center; gap: var(--sp-3); flex: none; }
-/* VayuShield audit trail — compact aggregate tables and the hourly sparkline.
-   No inline styles anywhere: assertCSPSafe fails the page on a style="…" attr. */
+/* VayuShield audit trail â€” compact aggregate tables and the hourly sparkline.
+   No inline styles anywhere: assertCSPSafe fails the page on a style="â€¦" attr. */
 .vp-os .vs-trail { width: 100%; border-collapse: collapse; font-size: var(--text-sm); margin-top: 0.5rem; }
 .vp-os .vs-trail td { padding: 0.28rem 0.5rem 0.28rem 0; border-bottom: 1px solid var(--border); word-break: break-all; }
 .vp-os .vs-trail tr:last-child td { border-bottom: 0; }
@@ -5378,13 +5401,13 @@
 .vp-os .vs-hard-state.is-work { color: #d97706; }
 .vp-os .vs-hard-state.is-err { color: #dc2626; }
 
-/* ── Stat cards ──────────────────────────────────────────────── */
+/* â”€â”€ Stat cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vs-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-3); }
 .vp-os .vs-stat { background: var(--bg-surface-2); border: 1px solid var(--border); border-radius: var(--r); padding: var(--sp-4); }
 .vp-os .vs-stat .n { font-family: var(--font-head); font-size: var(--text-xl); font-weight: 700; line-height: 1; color: var(--text); }
 .vp-os .vs-stat .l { font-size: var(--text-xs); letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-2); margin-top: var(--sp-2); }
 
-/* ── Class pills / misc ──────────────────────────────────────── */
+/* â”€â”€ Class pills / misc â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vs-pills { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
 .vp-os .vs-pill { font-size: var(--text-xs); padding: var(--sp-1) var(--sp-3); border-radius: var(--r-full); background: var(--bg-surface-3); color: var(--text-2); border: 1px solid var(--border); }
 .vp-os .vs-export { margin-top: var(--sp-4); }
@@ -5395,11 +5418,11 @@
   .vp-os .vs-row { flex-wrap: wrap; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   VayuTalk — ephemeral end-to-end-encrypted chat (/os/talk).
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   VayuTalk â€” ephemeral end-to-end-encrypted chat (/os/talk).
    Two-pane messenger: conversation rail + thread. Shares the relay with the
    mobile app; styling matches the console's dark glass system.
-   ═══════════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .vp-os .vtalk {
   display: grid;
   grid-template-columns: minmax(15rem, 19rem) minmax(0, 1fr);
@@ -5409,7 +5432,7 @@
   margin-top: var(--sp-4);
 }
 
-/* ── Left rail ─────────────────────────────────────────────────────────────*/
+/* â”€â”€ Left rail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€*/
 .vp-os .vtalk-side {
   display: flex; flex-direction: column; min-height: 0;
   background: var(--bg-surface); border: 1px solid var(--border);
@@ -5456,7 +5479,7 @@
 .vp-os .vtalk-search-ico { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-3); pointer-events: none; }
 .vp-os .vtalk-search { width: 100%; padding-left: 30px; }
 .vp-os .vtalk-convos:empty::before {
-  content: "No conversations yet — start one above.";
+  content: "No conversations yet â€” start one above.";
   display: block; padding: var(--sp-6) var(--sp-4); text-align: center;
   font-size: var(--text-xs); color: var(--text-3); line-height: 1.5;
 }
@@ -5496,7 +5519,7 @@
 .vp-os .vtalk-avatar--img { background: none; }
 .vp-os .vtalk-avatar--img img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-/* ── Main pane ─────────────────────────────────────────────────────────────*/
+/* â”€â”€ Main pane â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€*/
 .vp-os .vtalk-main {
   display: flex; flex-direction: column; min-height: 0; min-width: 0;
   background: var(--bg-surface); border: 1px solid var(--border);
@@ -5529,7 +5552,7 @@
   background: var(--brand-dim); border: 1px solid var(--border-strong);
 }
 
-/* ── Bubbles ───────────────────────────────────────────────────────────────*/
+/* â”€â”€ Bubbles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€*/
 .vp-os .vtalk-msg { display: flex; max-width: 78%; }
 .vp-os .vtalk-msg--in { align-self: flex-start; }
 .vp-os .vtalk-msg--out { align-self: flex-end; }
@@ -5557,7 +5580,7 @@
 @keyframes vtalk-pop { from { transform: translateY(6px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes vtalk-fade { to { transform: scale(.96); opacity: 0; } }
 
-/* Burn-after-read countdown — appears once a message is read and ticks down. */
+/* Burn-after-read countdown â€” appears once a message is read and ticks down. */
 .vp-os .vtalk-bubble-burn {
   font-variant-numeric: tabular-nums; font-weight: 600;
   color: var(--warn); opacity: 1; white-space: nowrap;
@@ -5572,7 +5595,7 @@
 .vp-os .vtalk-live { cursor: pointer; user-select: none; gap: 4px; }
 .vp-os .vtalk-live input { accent-color: var(--warn); width: 15px; height: 15px; }
 
-/* ── VayuTor — onion services control page ─────────────────────────────────── */
+/* â”€â”€ VayuTor â€” onion services control page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vt-hero {
   display: flex; align-items: center; justify-content: space-between;
   gap: var(--sp-4); flex-wrap: wrap;
@@ -5616,7 +5639,7 @@
 /* Tor bootstrap log tail shown while publishing (wraps, scrolls, never overflows). */
 .vp-os .vt-log { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--bg-surface-3); border: 1px solid var(--border); white-space: pre-wrap; word-break: break-word; overflow-x: auto; font-family: var(--mono, monospace); line-height: 1.45; }
 
-/* Operator bridge configuration (paste obfs4 lines — no server access needed). */
+/* Operator bridge configuration (paste obfs4 lines â€” no server access needed). */
 .vp-os .vt-bridges__input { width: 100%; box-sizing: border-box; resize: vertical; min-height: 76px; padding: 10px 12px; border-radius: 8px; background: var(--bg-surface-2); border: 1px solid var(--border); color: var(--text); font-family: var(--mono, monospace); font-size: 12px; line-height: 1.5; }
 .vp-os .vt-bridges__input:focus { outline: none; border-color: var(--accent); }
 .vp-os .vt-bridges__row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
@@ -5654,13 +5677,13 @@
 /* Off-screen buffer used by the clipboard fallback (no inline styles). */
 .vp-os .vt-copy-buf { position: fixed; left: -9999px; top: 0; opacity: 0; }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .vp-os .vt-hero { align-items: flex-start; }
   .vp-os .vt-hero__action { width: 100%; }
   .vp-os .vt-hero__action .btn { width: 100%; }
 }
 
-/* ── Composer ──────────────────────────────────────────────────────────────*/
+/* â”€â”€ Composer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€*/
 .vp-os .vtalk-composer {
   border-top: 1px solid var(--border); padding: var(--sp-3) var(--sp-4);
   display: flex; flex-direction: column; gap: var(--sp-2);
@@ -5679,15 +5702,15 @@
 .vp-os .vtalk-opt--spacer { flex: 1; }
 .vp-os .vtalk-composer-actions .btn { margin-left: var(--sp-2); }
 
-/* ── Responsive: stack the rail above the thread ───────────────────────────*/
-@media (max-width: 800px) {
+/* â”€â”€ Responsive: stack the rail above the thread â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€*/
+@media (max-width: 768px) {
   .vp-os .vtalk { grid-template-columns: 1fr; height: auto; }
   .vp-os .vtalk-side { max-height: 40vh; }
   .vp-os .vtalk-thread { min-height: 22rem; }
   .vp-os .vtalk-msg { max-width: 90%; }
 }
 
-/* ── VayuTalk: key verification + reachability ──────────────────────────────*/
+/* â”€â”€ VayuTalk: key verification + reachability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€*/
 .vp-os .vtalk-thread-head { flex-wrap: wrap; position: relative; }
 .vp-os .vtalk-head-meta { flex: 1; }
 .vp-os .vtalk-verify-btn {
@@ -5735,7 +5758,7 @@
 .vp-os .vtalk-safety-missing { margin-top: var(--sp-2); font-size: var(--text-xs); color: var(--warn); line-height: 1.5; }
 
 .vp-os .vtalk-convo--verified .vtalk-convo-name::after {
-  content: "🛡"; margin-left: .35rem; font-size: .8em; opacity: .9;
+  content: "ðŸ›¡"; margin-left: .35rem; font-size: .8em; opacity: .9;
 }
 
 .vp-os .vtalk-warn {
@@ -5755,12 +5778,12 @@
 .vp-os .vtalk-as:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-dim); }
 
 /* ============================================================================
-   VayuMail — Accounts section (enterprise HTMX redesign)
+   VayuMail â€” Accounts section (enterprise HTMX redesign)
    Collapsible mailbox cards, stat strip, native <meter> storage, device
    live-refresh. All rules scoped under .vp-os; no inline styles (CSP-safe).
    ============================================================================ */
 
-/* Stat strip — at-a-glance summary above the mailbox list. */
+/* Stat strip â€” at-a-glance summary above the mailbox list. */
 .vp-os .vm-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -5782,7 +5805,7 @@
 .vp-os .vm-stat--warn { border-color: var(--warn); background: var(--warn-dim); }
 .vp-os .vm-stat--warn .vm-stat__v { color: var(--warn); }
 
-/* ── VayuMail: Monetization-style shell (premium tab bar + lifting stat cards) ─ */
+/* â”€â”€ VayuMail: Monetization-style shell (premium tab bar + lifting stat cards) â”€ */
 /* One place restyles the sub-nav and the stat strip across every VayuMail page. */
 .vp-os .vmtabs {
   display: flex; flex-wrap: wrap; gap: var(--sp-1);
@@ -5854,7 +5877,7 @@
 }
 .vp-os .vm-acct[open] .vm-acct__chev { transform: rotate(180deg); }
 
-/* Native storage meter — no inline style, survives HTMX swaps. */
+/* Native storage meter â€” no inline style, survives HTMX swaps. */
 .vp-os .vm-meter { width: 84px; height: 8px; border-radius: var(--r-full); background: var(--bg-surface-3); border: none; }
 .vp-os .vm-meter::-webkit-meter-bar { background: var(--bg-surface-3); border-radius: var(--r-full); border: none; }
 .vp-os .vm-meter::-webkit-meter-optimum-value { background: var(--brand); border-radius: var(--r-full); }
@@ -5897,7 +5920,7 @@
   .vp-os .vm-acct__badges { flex: 1 1 100%; }
 }
 
-/* ── VayuMail DNS tab: collapsible sections + verification ──────────────────── */
+/* â”€â”€ VayuMail DNS tab: collapsible sections + verification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vm-sec { padding: 0; overflow: hidden; transition: border-color var(--t), box-shadow var(--t); }
 .vp-os .vm-sec[open] { border-color: var(--border-strong); box-shadow: var(--sh); }
 .vp-os .vm-sec__head {
@@ -5965,7 +5988,7 @@
 .vp-os .htmx-request .htmx-indicator,
 .vp-os .htmx-request.htmx-indicator { opacity: 1; }
 
-/* ── VayuMail Mailbox: per-domain directory cards ──────────────────────────── */
+/* â”€â”€ VayuMail Mailbox: per-domain directory cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vm-dom-card + .vm-dom-card { margin-top: var(--sp-4); }
 .vp-os .vm-dom-head {
   display: flex;
@@ -5977,7 +6000,7 @@
 .vp-os .vm-dom-name { font-family: var(--font-head); font-weight: 600; font-size: var(--text-base); color: var(--text); }
 .vp-os .vm-dom-count { font-size: var(--text-xs); color: var(--text-3); }
 
-/* ── VayuMail Outbox: per-domain filter chips ──────────────────────────────── */
+/* â”€â”€ VayuMail Outbox: per-domain filter chips â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .vm-fchip-row { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-3) 0; }
 .vp-os .vm-fchip {
   padding: 3px var(--sp-3);
@@ -6008,7 +6031,7 @@
 .vp-os .vm-outbox-table .vm-ocw-err { width: 17%; }
 .vp-os .vm-outbox-table .vm-ocw-when { width: 13%; }
 .vp-os .vm-outbox-table .vm-ocw-act { width: 11%; }
-/* Multi-domain (8 col) widths — sizes the From column too. */
+/* Multi-domain (8 col) widths â€” sizes the From column too. */
 .vp-os .vm-outbox-table--multi .vm-ocw-from { width: 12%; }
 .vp-os .vm-outbox-table--multi .vm-ocw-to { width: 15%; }
 .vp-os .vm-outbox-table--multi .vm-ocw-subj { width: 19%; }
@@ -6028,7 +6051,7 @@
 .vp-os .vm-avatar-form { display: inline-flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin: 0; }
 .vp-os .vm-avatar-form input[type=file] { max-width: 220px; }
 
-/* Prebuilt cartoon picker — an alternative to uploading a file. */
+/* Prebuilt cartoon picker â€” an alternative to uploading a file. */
 .vp-os .vm-acct__avatar-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin: 0 0 var(--sp-3); }
 .vp-os .vm-cartoon-row { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .vp-os .vm-cartoon {
@@ -6054,7 +6077,7 @@
 /* PGP public key block inside a mailbox card. The armour is shown in a readonly
    textarea rather than a <pre>: it scrolls in a fixed height, and select-all
    still works when the clipboard API is unavailable (insecure context, or a
-   browser that refuses the permission) — which is the copy fallback. */
+   browser that refuses the permission) â€” which is the copy fallback. */
 .vp-os .vm-pgp__armor {
   width: 100%;
   resize: vertical;
@@ -6067,7 +6090,7 @@
 .vp-os .vm-pgp__wkd { word-break: break-all; }
 
 /* In the VayuPGP key table the armour is only a clipboard source, not something
-   to read, so it is taken out of flow. clip-path rather than display:none —
+   to read, so it is taken out of flow. clip-path rather than display:none â€”
    a hidden element's value is still readable by script, but a display:none
    textarea cannot be select()ed, which is the fallback when the clipboard API
    is refused. */
@@ -6082,14 +6105,14 @@
   overflow: hidden;
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
-   VayuAPI — API Keys console (fine-grained key manager)
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   VayuAPI â€” API Keys console (fine-grained key manager)
    Every rule is CSP-safe (no inline styles): the handlers emit only class
    hooks, all presentation lives here. Layout uses the shared design tokens so
    the console tracks the light/dark themes automatically.
-   ══════════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* Intro / lead paragraph — hold it to a comfortable reading measure. */
+/* Intro / lead paragraph â€” hold it to a comfortable reading measure. */
 .vp-os .ak-intro { max-width: 78ch; }
 
 /* One-time token reveal banner: an accent-framed card that appears after a
@@ -6128,13 +6151,13 @@
 .vp-os .ak-grid-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); margin: var(--sp-5) 0 var(--sp-2); }
 .vp-os .ak-superuser { display: inline-flex; align-items: center; gap: var(--sp-2); cursor: pointer; font-size: var(--text-sm); color: var(--text-2); }
 
-/* The 12×6 permission grid: section rows × action columns. Checkboxes centre in
+/* The 12Ã—6 permission grid: section rows Ã— action columns. Checkboxes centre in
    their cells; the section name column stays left-aligned and never wraps. */
 .vp-os .ak-grid th, .vp-os .ak-grid td { text-align: center; padding: var(--sp-2); }
 .vp-os .ak-grid-section { text-align: left; font-weight: 600; color: var(--text-2); white-space: nowrap; }
 .vp-os .ak-grid-all { color: var(--text-3); font-weight: 500; }
 .vp-os .ak-grid input[type="checkbox"], .vp-os .ak-superuser input[type="checkbox"] { accent-color: var(--brand); cursor: pointer; width: 16px; height: 16px; }
-/* Full access selected → the grid is dimmed and inert; the grant is implicit. */
+/* Full access selected â†’ the grid is dimmed and inert; the grant is implicit. */
 .vp-os .ak-grid--disabled { opacity: 0.4; pointer-events: none; }
 
 .vp-os .ak-create-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); margin-top: var(--sp-4); }
@@ -6151,7 +6174,7 @@
 /* Custom-credential add form: name / endpoint / secret inputs + Add button. */
 .vp-os .ak-cc-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--sp-3); margin-bottom: var(--sp-4); }
 
-/* ── Claude connector page (ADR-0139, Stage 2) ─────────────────────────────
+/* â”€â”€ Claude connector page (ADR-0139, Stage 2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Three grant choices sit side by side and wrap to a single column on narrow
    viewports; the full-control card is accent-framed so the "give Claude the
    keys" option reads as the headline. Config snippets use a scrollable mono
@@ -6170,7 +6193,7 @@
   overflow-x: auto;
 }
 
-/* ── OAuth consent screen (ADR-0140) — shown on the auth-page shell ───────── */
+/* â”€â”€ OAuth consent screen (ADR-0140) â€” shown on the auth-page shell â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .oauth-consent { max-width: 30rem; }
 .oauth-choices { display: flex; flex-direction: column; gap: var(--sp-3); margin: var(--sp-4) 0; }
 .oauth-choice {
@@ -6184,14 +6207,14 @@
 .oauth-choice-desc { font-size: var(--text-sm); color: var(--text-2); }
 .oauth-actions { display: flex; gap: var(--sp-3); margin-top: var(--sp-4); }
 
-/* ══════════════════════════════════════════════════════════════════════════
-   ADR-0136 — native View Transitions (cross-document + HTMX swaps)
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   ADR-0136 â€” native View Transitions (cross-document + HTMX swaps)
    A CSS at-rule only; lives in this same-origin stylesheet, so it satisfies
    style-src 'self' with zero CSP change and needs no JavaScript. Same-origin
    full-page navigations (sidebar links) and HTMX swaps (globalViewTransitions)
-   crossfade instead of hard-cutting. Fully progressive — browsers without
+   crossfade instead of hard-cutting. Fully progressive â€” browsers without
    support just navigate normally. Motion is neutralised under reduced-motion.
-   ══════════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 @view-transition { navigation: auto; }
 ::view-transition-old(root) { animation: vp-vt-out 160ms cubic-bezier(0.4,0,1,1) both; }
 ::view-transition-new(root) { animation: vp-vt-in 240ms cubic-bezier(0,0,0.2,1) both; }
@@ -6207,17 +6230,17 @@
 .vp-os .ak-filter { margin-bottom: var(--sp-3); }
 .vp-os .ak-filter-input { max-width: 340px; }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   VayuMail — reading and composing, premium pass.
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   VayuMail â€” reading and composing, premium pass.
 
    The reading pane was a terminal dump: the body rendered in a 13px monospace
    <pre> capped at 65vh with its OWN scrollbar, so in full view you scrolled a box
    inside a box and the text used two thirds of a screen it had all of. Mail is
    long-form reading; it gets a reading column, a real type scale, and a header
    built from the same grammar as the Monetization page.
-   ═══════════════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ── The reading column ─────────────────────────────────────────────────── */
+/* â”€â”€ The reading column â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .vp-os .vm-msg-body {
   /* Proportional, not monospace: plain-text mail still preserves the author's
@@ -6279,7 +6302,7 @@
   color: var(--text-2);
 }
 
-/* ── Header: identity, then metadata as a grid ──────────────────────────── */
+/* â”€â”€ Header: identity, then metadata as a grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .vp-os .vm-msg-subject {
   font-family: var(--font-head, inherit);
@@ -6317,10 +6340,10 @@
   letter-spacing: 0.05em;
 }
 
-/* ── Full view: a centred reading column, not an edge-to-edge stretch ───── */
+/* â”€â”€ Full view: a centred reading column, not an edge-to-edge stretch â”€â”€â”€â”€â”€ */
 
 .vp-os #vm-readpane.vm-readpane--full {
-  /* Scroll behaviour lives here — this is the one scroll container. */
+  /* Scroll behaviour lives here â€” this is the one scroll container. */
   padding: 0;
   overscroll-behavior: contain;
 }
@@ -6329,7 +6352,7 @@
   margin: 0 auto;
   padding: 1.6rem 2rem 3rem;
 }
-/* The action bar stays reachable however far you have read — the same rule the
+/* The action bar stays reachable however far you have read â€” the same rule the
    member portal's close button needed. */
 .vp-os #vm-readpane.vm-readpane--full .vm-actions,
 .vp-os #vm-readpane.vm-readpane--full .vm-reader-top {
@@ -6351,7 +6374,7 @@
 /* Actions: one primary, the rest quiet, wrapping instead of overflowing. */
 .vp-os .vm-actions { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
 
-/* ── Attachments ────────────────────────────────────────────────────────── */
+/* â”€â”€ Attachments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .vp-os .vm-attach { margin-top: 1rem; }
 .vp-os .vm-attach-list { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
@@ -6376,9 +6399,9 @@
   .vp-os .vm-attach-chip:hover { transform: none; }
 }
 
-/* ── Composer: a real editor bar ─────────────────────────────────────────────
+/* â”€â”€ Composer: a real editor bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    The message field was a bare textarea. Formatting now has a toolbar, a word
-   count and a preview — and every control writes plain text into the body,
+   count and a preview â€” and every control writes plain text into the body,
    because that is exactly what gets delivered. */
 
 .vp-os .vm-editor { display: grid; gap: 0; }
@@ -6461,7 +6484,7 @@
 .vp-os .vm-pv-hr { border-top: 1px solid var(--border); margin: .9rem 0; height: 0; }
 .vp-os .vm-pv-blank { height: .55rem; }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   /* Keep every control tappable rather than letting the bar shrink them. */
   .vp-os .vm-ed-btn { min-width: 38px; height: 38px; }
 }
@@ -6470,7 +6493,7 @@
   .vp-os .vm-ed-btn:active { transform: none; }
 }
 
-/* ── Install health ──────────────────────────────────────────────────────────
+/* â”€â”€ Install health â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    A pass/fail list with the consequence spelled out, because "installable" is a
    conjunction of a dozen requirements and knowing WHICH one failed is the whole
    value. Failures carry their explanation; passes stay quiet. */
@@ -6519,11 +6542,11 @@
 .vp-os .pwa-browser { margin-top: 1.2rem; }
 .vp-os .pwa-probe-rows { min-height: 2rem; }
 
-/* ── VayuMail account recovery (ADR-0144) ─────────────────────────────────── */
+/* â”€â”€ VayuMail account recovery (ADR-0144) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .vp-os .rec-list { margin: .5rem 0 0; padding-left: 1.2rem; display: grid; gap: .25rem; }
 .vp-os .rec-list code { font-size: .82rem; }
 .vp-os .rec-status { margin-top: .6rem; }
-/* The codes are shown exactly once, so the block is deliberately loud — this is
+/* The codes are shown exactly once, so the block is deliberately loud â€” this is
    the moment the operator has to act, and a quiet panel is one people scroll
    past and then cannot get back. */
 .vp-os .rec-codes {
@@ -6556,7 +6579,7 @@
 .vp-os .rec-codes__actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 
 /* ---------------------------------------------------------------------------
-   Editor → Write with AI panel.
+   Editor â†’ Write with AI panel.
 
    The panel borrows the Monetization grammar (.mon-acc summaries with icon,
    subtitle and status chip) so the busiest surface in the product does not have
@@ -6564,7 +6587,7 @@
    on a narrow panel.
    --------------------------------------------------------------------------- */
 /* The panel body is a flex COLUMN, so a <details> is a flex item and shrinks
-   below its natural height whenever the panel is shorter than its content — and
+   below its natural height whenever the panel is shorter than its content â€” and
    .mon-acc sets overflow:hidden, so the shrunk box silently clipped its own
    fields (measured: a 261px body inside a 121px box on a 700px-tall window, with
    "Language" and "Creativity" cut off entirely). flex:none makes each section
@@ -6618,8 +6641,8 @@
   .ai-status--err { color: #b91c1c; }
   .ai-status--busy { color: #1d4ed8; }
 }
-:root[data-theme="light"] .ai-status--err { color: #b91c1c; }
-:root[data-theme="light"] .ai-status--busy { color: #1d4ed8; }
+.vp-os[data-theme="light"] .ai-status--err { color: #b91c1c; }
+.vp-os[data-theme="light"] .ai-status--busy { color: #1d4ed8; }
 
 /* A range input inherits almost nothing from .pm-input, so give it a sane size. */
 .ai-panel input[type="range"] {
@@ -6631,15 +6654,15 @@
   accent-color: var(--os-accent, #6366f1);
 }
 
-/* ── Per-site tool tiles (ADR-0154) ──────────────────────────────────────────
+/* â”€â”€ Per-site tool tiles (ADR-0154) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    These render inside .mon-stack, next to the accordions, and must read as
    members of the same family: same frame, same icon chip, same title/subtitle
    rhythm. The difference is that a tool is a LINK, not a disclosure, so it gets
-   an affordance the accordion does not — a chevron that leans on hover.
+   an affordance the accordion does not â€” a chevron that leans on hover.
 
    Written because the markup shipped without it. Three classes were emitted for
    two releases with no rule matching them, so every tile collapsed to inline
-   text — title and description run together, underlined on hover by the default
+   text â€” title and description run together, underlined on hover by the default
    anchor style. It passed every test: the link was present, the page was
    CSP-safe, and nothing anywhere asserted it would look like anything. */
 .vp-os .scoped-tool {
@@ -6657,7 +6680,7 @@
   box-shadow: var(--sh-sm);
 }
 .vp-os a.scoped-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-/* The inner grammar is .mon-acc__ic / __head / __title / __sub / .mon-chip —
+/* The inner grammar is .mon-acc__ic / __head / __title / __sub / .mon-chip â€”
    the accordion summary's, reused rather than re-declared. This band and the
    administration band sit on the same page one under the other, and while they
    were two components with matching-by-hand rules they drifted: the tools had
@@ -6665,7 +6688,7 @@
    two designs stacked. There is one set of rules now, and no way to drift. */
 /* A link leans; a disclosure rotates. Different affordance, same family. */
 .vp-os .scoped-tool::after {
-  content: "›"; flex: none; color: var(--text-3); font-size: 1.15rem; line-height: 1;
+  content: "â€º"; flex: none; color: var(--text-3); font-size: 1.15rem; line-height: 1;
   transition: transform var(--t-fast), color var(--t-fast);
 }
 .vp-os a.scoped-tool:hover::after { transform: translateX(3px); color: var(--text); }
@@ -6682,9 +6705,9 @@
   .vp-os .scoped-tool .mon-acc__sub { white-space: normal; overflow: visible; }
 }
 
-/* ── form-grid / field--check ────────────────────────────────────────────────
+/* â”€â”€ form-grid / field--check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    `.form-grid` is used on nearly every VayuOS card that has more than one input
-   and was defined NOWHERE — not here, not in admin.css. Every one of those
+   and was defined NOWHERE â€” not here, not in admin.css. Every one of those
    forms has been rendering as a plain stack while its class name promised a
    grid. Found by the gate that was written for the tool tiles, which is the
    point of writing gates rather than fixing the one instance in front of you.
@@ -6711,7 +6734,7 @@
 }
 
 /* The provisioning log, shown verbatim on the site console. Scrolls in its own
-   box so a long log never widens the page — the rule every wide block here
+   box so a long log never widens the page â€” the rule every wide block here
    follows. */
 .vp-os .vm-logbox {
   max-height: 320px; overflow: auto; margin: 0;
@@ -6720,11 +6743,11 @@
   white-space: pre; tab-size: 2;
 }
 
-/* ── Classes that were emitted with no rule behind them ──────────────────────
+/* â”€â”€ Classes that were emitted with no rule behind them â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Each element below carried NO styled class at all, so it rendered as bare
    inline text: a status pill as a run-on word, a form input as an unstyled
    browser box, a warning banner as a plain paragraph. This is the `scoped-tool`
-   defect — markup shipped with nothing matching it — found twenty-one more times
+   defect â€” markup shipped with nothing matching it â€” found twenty-one more times
    by a source-wide sweep after the per-page gate was fixed to stop letting a
    longer class name answer for a shorter one.
 
@@ -6734,7 +6757,7 @@
    left alone. Only elements with nothing at all are given a look here. */
 
 /* Status pills on the site list. Same grammar as .badge, which they should
-   probably have used — kept as their own class because the markup is shipped
+   probably have used â€” kept as their own class because the markup is shipped
    and renaming it is a separate change from making it visible. */
 .vp-os .pill {
   display: inline-flex; align-items: center; gap: var(--sp-1);
@@ -6766,7 +6789,7 @@
 }
 
 /* A row with its ends pushed apart. Replaces an inline style attribute that was
-   doing this by hand — which is also why the class had no rule: the styling had
+   doing this by hand â€” which is also why the class had no rule: the styling had
    been put somewhere assertCSPSafe forbids. */
 .vp-os .flex-between { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
 
@@ -6778,7 +6801,7 @@
   padding: var(--sp-3); overflow-x: auto; white-space: pre; color: var(--text-2);
 }
 
-/* A list that is structure rather than prose — no bullets, no indent. */
+/* A list that is structure rather than prose â€” no bullets, no indent. */
 .vp-os .reset-list { list-style: none; margin: 0; padding: 0; }
 
 /* Inline result of an SEO or IndexNow action. */
@@ -6806,7 +6829,7 @@
 /* Text beside the site mark in Theme Studio. */
 .vp-os .cz-logo__meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 
-/* The anonymous VayuTalk code — an identity to read aloud and copy, so it is
+/* The anonymous VayuTalk code â€” an identity to read aloud and copy, so it is
    given the weight of one rather than of a sentence. */
 .vp-os .vtalk-anon {
   border: 1px solid var(--border); border-radius: var(--r-md);
@@ -6833,3 +6856,167 @@
    clickable rather than pixel-hunting. */
 .vp-os .ak-perm,
 .vp-os .ak-perm-all { width: 15px; height: 15px; accent-color: var(--brand); cursor: pointer; flex: none; }
+
+/* â”€â”€ Editor lifecycle (dashboard-upgrade Wave 1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   .editor-pubstate  â€” topbar Draft/Published pill beside the publish button.
+   .editor-recover   â€” crash-recovery banner offering unsaved work back.       */
+.vp-os .editor-pubstate {
+  display: inline-flex; align-items: center; gap: var(--sp-1);
+  padding: 2px var(--sp-2); border-radius: var(--r-full);
+  font-size: var(--text-xs); font-weight: 650; letter-spacing: 0.02em;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.vp-os .editor-pubstate.is-draft {
+  color: var(--warn); border-color: var(--warn-dim, rgba(251,191,36,.35));
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+.vp-os .editor-pubstate.is-published {
+  color: var(--ok); border-color: var(--ok-dim, rgba(52,211,153,.35));
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+.vp-os [data-editor-publish-btn] { min-width: 86px; }
+.vp-os [data-editor-publish-btn][disabled] { opacity: .6; cursor: progress; }
+
+.vp-os .editor-recover {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4); margin: 0 0 var(--sp-4);
+  border: 1px solid var(--warn-dim, rgba(251,191,36,.35));
+  border-left: 3px solid var(--warn);
+  border-radius: var(--r-md); background: var(--bg-surface);
+  animation: editorRecoverIn var(--t-enter, 220ms) ease-out;
+}
+.vp-os .editor-recover__msg { flex: 1; color: var(--text-2); font-size: var(--text-sm); }
+@keyframes editorRecoverIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* â”€â”€ First-run checklist (dashboard, Wave 2.5) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   The short path from install to a live site. Dismissable per browser; hidden
+   entirely once every probe reports done â€” a checklist that nags completed
+   work is the dishonesty this console exists to remove. */
+.vp-os .first-run { margin: 0 0 var(--space-5); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg-surface); overflow: hidden; }
+.vp-os .first-run[hidden] { display: none; }
+.vp-os .frc__head { display: flex; align-items: baseline; gap: var(--space-3); padding: var(--space-4) var(--space-5); background: linear-gradient(90deg, var(--brand-glow, transparent), transparent 70%); border-bottom: 1px solid var(--border); }
+.vp-os .frc__title { font-weight: var(--weight-semibold, 600); color: var(--text-1); }
+.vp-os .frc__hint { flex: 1; color: var(--text-3); font-size: var(--text-sm); }
+.vp-os .frc__list { list-style: none; margin: 0; padding: var(--space-2) var(--space-3) var(--space-3); }
+.vp-os .frc__item { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-2); border-radius: var(--r-sm, 8px); }
+.vp-os .frc__item + .frc__item { border-top: 1px solid var(--border); }
+.vp-os .frc__item--done { opacity: .62; }
+.vp-os .frc__mark { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 13px; flex: none; }
+.vp-os .frc__mark--done { background: var(--ok); color: var(--on-brand); }
+.vp-os .frc__mark--todo { border: 1.5px dashed var(--border-strong, var(--border)); color: var(--text-3); }
+.vp-os .frc__text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.vp-os .frc__label { color: var(--text-1); font-weight: var(--weight-medium, 500); }
+.vp-os .frc__item--done .frc__label { text-decoration: line-through; }
+.vp-os .frc__detail { color: var(--text-3); font-size: var(--text-sm); }
+.vp-os .frc__done-label { color: var(--ok); font-size: var(--text-sm); font-weight: var(--weight-medium, 500); }
+@media (prefers-reduced-motion: reduce) { .vp-os .frc__item { transition: none; } }
+
+/* Space switch â†’ worlds registry link (Wave 2.7 orphans & naming). */
+.vp-os .space-switch__manage { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; padding-left: 2px; color: var(--text-3); font-size: var(--text-xs, 11px); text-decoration: none; border-radius: 6px; }
+.vp-os .space-switch__manage:hover, .vp-os .space-switch__manage:focus-visible { color: var(--text-1); }
+
+/* Login: 2FA demoted to a collapsed disclosure (Wave 2.8) â€” the optional code
+   field was noise for every operator without TOTP, and a lie for those whose
+   accounts do not even have it. Operators WITH a code get one clean click. */
+.vp-os .login-totp { margin: 0 0 var(--space-4); }
+.vp-os .login-totp__summary { cursor: pointer; color: var(--text-2); font-size: var(--text-sm); list-style: none; display: inline-flex; align-items: center; gap: 6px; }
+.vp-os .login-totp__summary::-webkit-details-marker { display: none; }
+.vp-os .login-totp__summary::before { content: "â–¸"; font-size: 10px; transition: transform 140ms ease; }
+.vp-os .login-totp[open] .login-totp__summary::before { transform: rotate(90deg); }
+.vp-os .login-totp__summary:hover, .vp-os .login-totp__summary:focus-visible { color: var(--text-1); }
+.vp-os .login-totp .field { margin-top: var(--space-3); }
+@media (prefers-reduced-motion: reduce) { .vp-os .login-totp__summary::before { transition: none; } }
+
+/* Row-face quick actions (Wave 3.5): compact publish/pin toggles live on the
+   summary row itself â€” the most common action never needs to open the card. */
+.vp-os .post-acc__face { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.vp-os .post-acc__face-btn { padding: 2px 9px; min-height: 26px; font-size: var(--text-sm); line-height: 1.4; }
+.vp-os .post-acc__face-btn[aria-label="Pin post"], .vp-os .post-acc__face-btn[aria-label="Unpin post"] { font-size: 14px; padding: 2px 7px; }
+.vp-os .post-acc__face-btn:disabled { opacity: .55; }
+
+/* Activity rows that carry an href render as anchors (Wave 2.3): they must
+   not wear default link styling — the row IS the affordance. */
+.vp-os a.activity-item { text-decoration: none; }
+
+/* Attention strip (Wave 2.2): the dashboard's inline alarm row. Sorted danger
+   → warn → info; absent entirely when there is nothing needing eyes. */
+.vp-os .attention-strip { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 var(--space-5); }
+.vp-os .attention-chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-surface); text-decoration: none; max-width: 100%; }
+.vp-os .attention-chip__dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--info); }
+.vp-os .attention-chip--warn .attention-chip__dot { background: var(--warn); }
+.vp-os .attention-chip--danger { border-color: var(--danger); background: var(--danger-dim); }
+.vp-os .attention-chip--danger .attention-chip__dot { background: var(--danger); animation: attnPulse 1.6s ease-in-out infinite; }
+.vp-os .attention-chip--warn { border-color: var(--warn); background: var(--warn-dim); }
+.vp-os .attention-chip--warn .attention-chip__dot { animation: attnPulse 2.4s ease-in-out infinite; }
+.vp-os .attention-chip__title { color: var(--text-1); font-weight: var(--weight-medium, 500); font-size: var(--text-sm); white-space: nowrap; }
+.vp-os .attention-chip__detail { color: var(--text-2); font-size: var(--text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@keyframes attnPulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .vp-os .attention-chip__dot { animation: none; } }
+
+/* Bell badge wears its worst severity (Wave 2.2). */
+.vp-os .topbar-notif__badge--danger { background: var(--danger); color: var(--on-brand); }
+
+/* Keyboard row highlight (Wave 3.7): j/k walk the post list; the highlighted
+   row needs a visible, non-colour-only affordance. */
+.vp-os .post-row--kbd > .mon-acc { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--r-md, 12px); }
+
+/* vpConfirm modal (Wave 3.11): the styled, focus-managed replacement for
+   window.confirm. Built with createElement/textContent only — CSP-safe. */
+.vp-os .vp-confirm-backdrop { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(2, 6, 14, 0.62); backdrop-filter: blur(3px); }
+.vp-os .vp-confirm { background: var(--bg-surface); border: 1px solid var(--border-strong, var(--border)); border-radius: var(--r-md, 12px); box-shadow: var(--sh-lg); padding: var(--space-5); width: min(420px, calc(100vw - 32px)); }
+.vp-os .vp-confirm__title { font-weight: var(--weight-semibold, 600); color: var(--text-1); margin-bottom: var(--space-2); }
+.vp-os .vp-confirm__msg { color: var(--text-2); font-size: var(--text-sm); line-height: 1.5; margin-bottom: var(--space-4); overflow-wrap: anywhere; }
+.vp-os .vp-confirm__row { display: flex; justify-content: flex-end; gap: var(--space-2); }
+
+/* Editor device toggles (Wave 4.4): the live preview pane re-sizes to a
+   believable phone/tablet width so responsive truth is visible pre-publish. */
+.vp-os .editor-live[data-device="tablet"] .editor-live-body { max-width: 768px; margin: 0 auto; }
+.vp-os .editor-live[data-device="mobile"] .editor-live-body { max-width: 390px; margin: 0 auto; }
+.vp-os .editor-devices { display: inline-flex; gap: 4px; margin-left: auto; }
+.vp-os .editor-devices__btn { border: 1px solid var(--border); background: transparent; color: var(--text-3); border-radius: 6px; padding: 1px 8px; font-size: 12px; cursor: pointer; }
+.vp-os .editor-devices__btn[aria-pressed="true"] { border-color: var(--brand); color: var(--brand); background: var(--brand-dim); }
+
+/* ── Wave 2.9 cool-factor: gradient CTAs ─────────────────────────────────────
+   The primary button carries a quiet brand gradient and a glow on hover —
+   enough to feel finished, not enough to shout. */
+.vp-os .btn--primary {
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand) 55%, color-mix(in srgb, var(--brand) 78%, #ffffff) 100%);
+}
+.vp-os .btn--primary:hover {
+  box-shadow: 0 0 0 1px var(--brand), 0 4px 18px var(--brand-glow);
+}
+.vp-os .btn--accent {
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 80%, #ffffff) 100%);
+}
+
+/* ── Wave 2.9 cool-factor: theme-flip crossfade ──────────────────────────────
+   Colour tokens transition over 180ms so a theme flip melts instead of
+   snapping. Scoped to the colour properties only — layout must never animate. */
+.vp-os, .vp-os .sidebar, .vp-os .topbar, .vp-os .card, .vp-os .work-card,
+.vp-os .mon-acc, .vp-os .quick-compose, .vp-os .stat-card {
+  transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vp-os, .vp-os .sidebar, .vp-os .topbar, .vp-os .card, .vp-os .work-card,
+  .vp-os .mon-acc, .vp-os .quick-compose, .vp-os .stat-card { transition: none; }
+}
+
+/* ── Wave 3.13 cool-factor: @property stat shimmer ───────────────────────────
+   The dashboard stat values carry a slow conic glow sweep built on a typed
+   custom property; @property makes the angle actually interpolable (browsers
+   without it simply show a static glow). */
+@property --vp-tick { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.vp-os .stat-card { position: relative; }
+.vp-os .stat-card::before {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px;
+  background: conic-gradient(from var(--vp-tick), transparent 0deg, var(--brand-glow) 60deg, transparent 120deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: .5; pointer-events: none;
+}
+@keyframes vpTickSpin { from { --vp-tick: 0deg; } to { --vp-tick: 360deg; } }
+.vp-os .stat-card::before { animation: vpTickSpin 9s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .vp-os .stat-card::before { animation: none; opacity: .3; } }
+
+.vp-os .frc__action { display: inline-flex; align-items: center; gap: 6px; margin-top: var(--space-2, 8px); color: var(--brand); font-size: var(--text-sm, 13px); font-weight: var(--weight-medium, 500); }
+.vp-os .frc__action:hover { text-decoration: underline; }

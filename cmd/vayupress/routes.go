@@ -46,6 +46,12 @@ func coreMiddleware() []func(http.Handler) http.Handler {
 		structuredLoggerMiddleware,
 		chimw.Timeout(30 * time.Second),
 		securityHeadersMiddleware,
+		// Origin compression for bare single-binary installs (Wave 3). Sits
+		// inside the core chain so every downstream response — public pages,
+		// /os console assets, feeds, API JSON — can be gzipped; SSE, Range and
+		// already-encoded responses pass through untouched (see the file's
+		// header for the full exclusion list).
+		gzipMiddleware,
 	}
 }
 
@@ -647,7 +653,11 @@ func (a *App) registerRoutes(r chi.Router, staticDir string) {
 		r.With(auth.CSRFTokenMiddleware).Post("/admin/search/reindex", a.handleSearchReindex)
 
 		// Theme & site settings editor.
-		r.Get("/admin/theme", a.handleThemeGet)
+		// /admin/theme is retired (Wave 2.7 orphans & naming): the classic page
+		// 301s into the VayuOS Theme editor so old bookmarks land somewhere
+		// real. The theme ACTION endpoints below stay — they are an
+		// authenticated API surface, not a page.
+		r.Get("/admin/theme", legacyRedirect())
 		r.Get("/admin/theme/export", a.handleThemeExport)
 		r.With(auth.CSRFTokenMiddleware).Post("/admin/theme", a.handleThemeSave)
 		r.With(auth.CSRFTokenMiddleware).Post("/admin/theme/reset", a.handleThemeReset)

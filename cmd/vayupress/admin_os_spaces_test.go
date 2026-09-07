@@ -131,10 +131,11 @@ func TestOSWorldCard(t *testing.T) {
 }
 
 // TestOSWorkspaceGrid checks the dashboard workspace surfaces the content areas
-// (moved off the sidebar) with counts + notification badges, and omits the
-// clearnet-only Website tile in the Tor world.
+// (moved off the sidebar) with counts + notification badges, omits the
+// clearnet-only Website tile in the Tor world, and gates every tile by access
+// level so RBAC shown==reachable parity holds on the dashboard too.
 func TestOSWorkspaceGrid(t *testing.T) {
-	clearnet := osWorkspaceGrid(false, 1234, 5, 3, 2, 40)
+	clearnet := osWorkspaceGrid(false, 1234, 5, 3, 2, 40, accessAdmin)
 	assertCSPSafe(t, "osWorkspaceGrid/clearnet", clearnet)
 	for _, want := range []string{
 		`href="/os/editor"`, `href="/os/posts"`, `href="/os/pages"`,
@@ -150,9 +151,18 @@ func TestOSWorkspaceGrid(t *testing.T) {
 		t.Error("workspace must surface pending-comment and unread-message badges")
 	}
 	// The Tor world omits the clearnet-only Website tile.
-	tor := osWorkspaceGrid(true, 10, 2, 0, 0, 4)
+	tor := osWorkspaceGrid(true, 10, 2, 0, 0, 4, accessAdmin)
 	if strings.Contains(tor, `href="/os/website"`) {
 		t.Error("Tor workspace must not show the clearnet Website tile")
+	}
+	// Role gate: a viewer who cannot reach a page must not be shown its tile.
+	// /os/website is admin-gated; /os/editor stays open to writers.
+	author := osWorkspaceGrid(false, 1, 1, 0, 0, 1, accessAuthor)
+	if strings.Contains(author, `href="/os/website"`) {
+		t.Error("an author-level viewer was shown the admin-only Website tile — a silent denial loop rendered as an invitation")
+	}
+	if !strings.Contains(author, `href="/os/posts"`) {
+		t.Error("an author-level viewer lost the Posts tile — the gate overreached")
 	}
 }
 

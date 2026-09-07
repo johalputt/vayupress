@@ -65,7 +65,7 @@ import (
 // Rotation is the same three steps: installs running an older binary keep
 // verifying against the older key until they update, which is why the key is
 // changed in a release rather than out of band.
-const releaseEd25519PubKey = ""
+const releaseEd25519PubKey = "d644670c592630d755d62270c15762702afdd3adb4bd0ef3c9c9fe8d6e3e2454"
 
 // ReleaseRequiresEd25519 reports whether this build enforces the second
 // signature. It exists so the panel can state which controls are actually in

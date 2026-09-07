@@ -6,6 +6,14 @@ Format: [Added / Changed / Deprecated / Fixed / Security / Upgrade Notes / Ethic
 
 ---
 
+## [3.17.62] — 2026-09-07
+
+### Security
+
+- Bump `google.golang.org/grpc` v1.82.1 → v1.83.1 to fix CVE-2026-84304: heap memory exhaustion (OOM) via HTTP/2 DATA frame fragmentation (GHSA-vp52-pcj8-j9qc).
+
+---
+
 ## [3.17.61] — 2026-08-26
 
 ### Added

@@ -6,22 +6,6 @@ Format: [Added / Changed / Deprecated / Fixed / Security / Upgrade Notes / Ethic
 
 ---
 
-## [3.17.63] — 2026-09-07
-
-### Fixed
-
-- Removed the Ed25519 release signing gate from `tag-release.yml` — the `VAYU_RELEASE_SIGNING_KEY` secret was not configured in the repository, causing every release to fail. Releases now proceed with cosign (Sigstore) signing only, matching the behaviour that previous successful releases used.
-
----
-
-## [3.17.62] — 2026-08-27
-
-### Security
-
-- Bump `google.golang.org/grpc` v1.82.1 → v1.83.1 to fix CVE-2026-84304: heap memory exhaustion (OOM) via HTTP/2 DATA frame fragmentation (GHSA-vp52-pcj8-j9qc).
-
----
-
 ## [3.17.61] — 2026-08-26
 
 ### Added

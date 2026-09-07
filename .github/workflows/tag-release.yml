@@ -147,6 +147,33 @@ jobs:
       # compiled into a shipped binary before any install can check a signature.
       # Once it is set it is fatal like the step above — the release-sign command
       # refuses to run without the key rather than emitting nothing.
+      # The conformance test in internal/update proves the workflow is CONFIGURED
+      # to sign. It cannot see whether the secret exists — no test can, secrets are
+      # invisible to them — so the one failure it cannot catch is checked here:
+      # a binary that pins a key, published without a signature because the secret
+      # was never set, is a release every install refuses and no later release can
+      # rescue, because those installs will refuse that one too.
+      #
+      # Fail the release instead. An unpublished version is a nuisance; an
+      # un-updatable fleet is not.
+      - name: Refuse to publish a pinned build without its signing secret
+        if: steps.exists.outputs.skip != 'true'
+        env:
+          VAYU_RELEASE_SIGNING_KEY: ${{ secrets.VAYU_RELEASE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          PIN=$(sed -n 's/^const releaseEd25519PubKey = "\(.*\)"$/\1/p' internal/update/releasekey.go)
+          if [ -n "$PIN" ] && [ -z "${VAYU_RELEASE_SIGNING_KEY:-}" ]; then
+            echo "::error::this build pins release signing key ${PIN} but the repository secret VAYU_RELEASE_SIGNING_KEY is not set. Publishing now would ship a release that every install running a pinned binary refuses, with no later release able to fix it."
+            exit 1
+          fi
+          # The pin is a public key, so printing it is safe. The secret is reported
+          # as present or absent and NEVER echoed — note the explicit branch rather
+          # than a ${VAR:+a}${VAR:-b} pair, which looks like it prints "present" or
+          # "absent" and in fact prints the KEY whenever the variable is set.
+          if [ -n "${VAYU_RELEASE_SIGNING_KEY:-}" ]; then SECRET=present; else SECRET=absent; fi
+          echo "pinned key: ${PIN:-<none>}   signing secret: ${SECRET}"
+
       - name: Sign binary with the release key (Ed25519)
         if: steps.exists.outputs.skip != 'true' && env.VAYU_RELEASE_SIGNING_KEY != ''
         env:

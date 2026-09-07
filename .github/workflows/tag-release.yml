@@ -138,6 +138,22 @@ jobs:
           test -s dist/vayupress.cosign.bundle
           echo "signed dist/vayupress"
 
+      # The second lock, with a different key custody model: Sigstore proves the
+      # release workflow produced this, and this proves the holder of a key that
+      # never leaves the secret store agreed. Compromising one does not give an
+      # attacker the other.
+      #
+      # Runs only once the secret exists, because the public half has to be
+      # compiled into a shipped binary before any install can check a signature.
+      # Once it is set it is fatal like the step above — the release-sign command
+      # refuses to run without the key rather than emitting nothing.
+      - name: Sign binary with the release key (Ed25519)
+        if: steps.exists.outputs.skip != 'true' && env.VAYU_RELEASE_SIGNING_KEY != ''
+        env:
+          VAYU_RELEASE_SIGNING_KEY: ${{ secrets.VAYU_RELEASE_SIGNING_KEY }}
+        run: |
+          go run ./scripts/release-sign dist/vayupress
+          test -s dist/vayupress.sig
 
       - name: Generate SBOM (CycloneDX)
         if: steps.exists.outputs.skip != 'true'
@@ -415,6 +431,7 @@ jobs:
             dist/vayupress
             dist/vayupress.sha256
             dist/vayupress.cosign.bundle
+            dist/vayupress.sig
             dist/vayupress-${{ steps.ver.outputs.version }}.sbom.json
             dist/vayupress-${{ steps.ver.outputs.version }}.sbom.cosign.bundle
             dist/vayushield-agent.tar.gz

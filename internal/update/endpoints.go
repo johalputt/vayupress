@@ -143,7 +143,7 @@ func jsdelivrLatest(ctx context.Context, client *http.Client, owner, repo string
 	}
 	var listing struct {
 		Versions []struct {
-			Version string `json:"version"`
+			Version string            `json:"version"`
 			Tags    map[string]string `json:"tags"`
 		} `json:"versions"`
 	}

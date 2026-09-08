@@ -201,7 +201,7 @@ func TestMirrorAssetURLMapping(t *testing.T) {
 			"https://github.com/johalputt/vayupress/releases/download/v9.9.9/vayupress",
 			mb + "/download/github/johalputt/vayupress/releases/download/v9.9.9/vayupress",
 		},
-		{"https://objects.githubusercontent.com/x", ""}, // not github.com
+		{"https://objects.githubusercontent.com/x", ""},                    // not github.com
 		{"https://github.com/johalputt/vayupress/releases/tag/v9.9.9", ""}, // not a download
 	}
 	for _, tc := range cases {

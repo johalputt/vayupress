@@ -23,14 +23,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// failingTransport fails every request at the transport level — the
-// "provider blackholed GitHub" simulation.
-type failingTransport struct{ msg string }
-
-func (f failingTransport) RoundTrip(*http.Request) (*http.Response, error) {
-	return nil, errors.New(f.msg)
-}
-
 // githubDownTransport routes github.com requests to a dead-route failure and
 // every OTHER host to the test mux — modelling a host whose route to GitHub's
 // edges is blackholed while the CDN/mirror edges are fine.

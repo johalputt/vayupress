@@ -4,10 +4,7 @@ package main
 
 import (
 	"math"
-	"strings"
 	"testing"
-
-	"github.com/johalputt/vayupress/internal/settings"
 )
 
 func TestContrastRatioKnownValues(t *testing.T) {
@@ -31,37 +28,10 @@ func TestDefaultPalettePassesWCAGAA(t *testing.T) {
 	}
 }
 
-// TestThemeEditorCoversSettingsAllowlist is a drift guard: every key in the
-// settings allowlist must appear in the rendered editor — both as an input id and
-// in the import key list — so export/import and the editor can never fall out of
-// sync with the allowlist as keys are added or removed.
-func TestThemeEditorCoversSettingsAllowlist(t *testing.T) {
-	// Branding keys are managed out-of-band by the multipart favicon upload
-	// handler (POST /admin/theme/favicon), not the JSON Save form, so they are
-	// deliberately absent from the form-field / import-key drift guard below.
-	// THE SAME SET THE EXPORTER USES. This list used to live here, and only
-	// here, while handleThemeExport iterated AllKeys — so the test knew which
-	// keys were not part of a theme and the exporter shipped them anyway,
-	// including a live API key. A duplicate of production truth in a test is a
-	// duplicate that drifts, and this one drifted into a credential leak.
-	outOfBand := settings.NotPortable
-	page := themeEditorPage(map[string]string{}, "NORMAL", "test-nonce", "")
-	for key := range settings.AllKeys {
-		if outOfBand[key] {
-			continue
-		}
-		if !strings.Contains(page, `id="`+key+`"`) {
-			t.Errorf("settings key %q has no input field in the theme editor", key)
-		}
-		if !strings.Contains(page, `'`+key+`'`) {
-			t.Errorf("settings key %q is missing from the import/save key list", key)
-		}
-	}
-	// The export and import sides must agree on the bundle schema version.
-	if themeExportVersion != 1 {
-		t.Errorf("import JS pins vayupress_theme===1; bump it in lockstep with themeExportVersion (%d)", themeExportVersion)
-	}
-}
+// TestThemeEditorCoversSettingsAllowlist was retired with the legacy
+// /admin/theme editor page it rendered: the route now redirects to /os/theme
+// and themeEditorPage is gone. The exporter it drifted-guarded is still live,
+// and its credential-leak guard lives on in theme_export_leak_test.go.
 
 func TestContrastWarningsFlagLowContrast(t *testing.T) {
 	// A near-white light primary on the light background must warn; a bright

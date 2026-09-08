@@ -81,11 +81,12 @@ func Reader() *sql.DB {
 	return DB
 }
 
-// ClosePools closes the WAL read pools (RDB and ARDB). Test-only convenience:
-// on Windows an open pool handle keeps the database file locked, so a temp-dir
-// cleanup cannot delete it and every otherwise-passing harness test reports a
-// teardown failure. Production never calls this — the pools live for the
-// process lifetime.
+// ClosePools closes the WAL read pools (RDB and ARDB). Called at the tail of
+// graceful shutdown (main.go phase 7) to release the pool handles in a defined
+// order after the primary DB closes; the pools live for the process lifetime
+// otherwise. Also used by tests: on Windows an open pool handle keeps the
+// database file locked, so a temp-dir cleanup cannot delete it and every
+// otherwise-passing harness test reports a teardown failure.
 func ClosePools() {
 	if RDB != nil {
 		_ = RDB.Close()

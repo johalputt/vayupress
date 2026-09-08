@@ -1473,6 +1473,13 @@ func main() {
 				logging.LogInfo("main", "phase 6 complete — database closed")
 			}
 		}
+		// Phase 7: close the WAL read pools. systemd stops the unit after the
+		// process exits, so this is tidy-up rather than necessity — but closing
+		// the dedicated VayuOS read pool (RDB) and admin read pool (ARDB)
+		// releases their WAL handles in a defined order instead of letting the
+		// process teardown race the checkpoint above.
+		dbpkg.ClosePools()
+		logging.LogInfo("main", "phase 7 complete — read pools closed")
 
 		logging.LogInfo("main", "shutdown complete — goodbye")
 		os.Exit(0)

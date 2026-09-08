@@ -6,6 +6,36 @@ Format: [Added / Changed / Deprecated / Fixed / Security / Upgrade Notes / Ethic
 
 ---
 
+## [3.17.63] — 2026-09-08
+
+### Fixed
+
+- **Race-free background work (integration `-race` red).** The
+  fire-and-forget IndexNow announcement and the event-driven create/update
+  indexing goroutines are now tracked on `App.bgWG` and drained in test
+  teardown, so they can no longer read the process-global config while the
+  next test's harness reloads it — the data race the `-race` CI build caught
+  in `TestFacePinFragmentParity` and `TestOSBulkUnpublishAndDelete` is gone.
+- **Teardown ordering (second `-race` kill).** `newTestHarness` now drains
+  CachePurge's async sitemap/feed writers *before* the WAL read pools close;
+  the previous registration order let a live sitemap goroutine read
+  `dbpkg.Reader()` while `ClosePools` nilled the handle.
+- **Deadcode gate green.** The legacy `/admin/theme` editor page
+  (`themeEditorPage`, `faviconStateLabel`) — unreachable since the route
+  became a redirect to `/os/theme` — is deleted along with its orphaned
+  drift-guard test (the exporter's credential-leak guard lives on in
+  `theme_export_leak_test.go`); `ClosePools` becomes production-reachable as
+  phase 7 of graceful shutdown, closing the read pools in a defined order
+  after the primary DB.
+- **Staticcheck green.** The dead `handleThemeGet` handler (orphaned by the
+  same legacy redirect, U1000) is removed; gofmt nits in `admin_os_ui.go`
+  are fixed.
+- **Dependency freshness.** `github.com/mattn/go-sqlite3` bumped
+  v1.14.50 → v1.14.52 — the one direct dependency the freshness gate
+  flagged as behind latest.
+
+---
+
 ## [3.17.62] — 2026-09-07
 
 ### Added

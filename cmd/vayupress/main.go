@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
-// VayuPress — main.go  v1.2.0
+// VayuPress â€” main.go  v1.2.0
 // Bootstrap, route wiring, and graceful shutdown only.
-// Domain logic lives in internal/* packages (ADR-0045 – ADR-0050).
+// Domain logic lives in internal/* packages (ADR-0045 â€“ ADR-0050).
 package main
 
 import (
@@ -86,19 +86,19 @@ import (
 
 // Version is the fallback build version. CI stamps the real version via
 // -ldflags "-X main.Version=<.release-version>", and scripts/update-vayupress.sh
-// reads .release-version too — keep this in sync with .release-version so an
+// reads .release-version too â€” keep this in sync with .release-version so an
 // un-stamped `go build` still reports an honest version.
-var Version = "3.17.62"
+var Version = "3.17.63"
 var bootTime = time.Now()
 
 // onionSafeBindAddr picks the HTTP listen address (ADR-0141).
 //
-// A Tor Space (OnionMode) is reached ONLY through Tor's HiddenServicePort →
+// A Tor Space (OnionMode) is reached ONLY through Tor's HiddenServicePort â†’
 // 127.0.0.1, so it binds loopback and its content is never exposed on the host's
-// public clearnet IP — closing an onion-deanonymisation vector.
+// public clearnet IP â€” closing an onion-deanonymisation vector.
 //
 // A clearnet install used to bind every interface unconditionally, which meant
-// the whole app — the admin console included — was served on http://<host>:8080
+// the whole app â€” the admin console included â€” was served on http://<host>:8080
 // with no nginx, no TLS and no Tier 3 shaping in front of it, to anyone who
 // scanned the port. The kernel tier does not cover it either: its chain policy is
 // accept and its rules only name 80 and 443. The onion reasoning above applies
@@ -112,7 +112,7 @@ var bootTime = time.Now()
 //     install that really does serve directly.
 //   - Containers bind all interfaces automatically. docker-compose.yml exposes
 //     8080 on the private Compose network and both Caddyfiles proxy to
-//     "vayupress:8080" BY HOSTNAME — cross-container, so a loopback bind inside
+//     "vayupress:8080" BY HOSTNAME â€” cross-container, so a loopback bind inside
 //     the netns is unreachable and the site would simply stop working. Detecting
 //     this beats breaking every containerised install to close a port that the
 //     container runtime already isolates.
@@ -139,7 +139,7 @@ func runningInContainer() bool {
 		return true
 	}
 	// cgroup v1 names the runtime in the path; v2 exposes it here too on the
-	// runtimes that matter. A read failure means "not a container" — the safe
+	// runtimes that matter. A read failure means "not a container" â€” the safe
 	// direction, since the cost of guessing wrong is a bind that is too tight
 	// rather than a port opened to the internet.
 	if b, err := os.ReadFile("/proc/1/cgroup"); err == nil {
@@ -206,7 +206,7 @@ func (a *App) bootstrapDefaultAdmin(ctx context.Context) {
 
 	// Persist the credentials to a root-only file beside the DB so they survive a
 	// scrolled-past log. Best-effort: if the write fails, the operator is told to
-	// bootstrap by hand — the password itself is never logged (audit: a
+	// bootstrap by hand â€” the password itself is never logged (audit: a
 	// credential in a log line lands in journald rotations and every `docker
 	// logs` scrollback forever).
 	credPath := filepath.Join(filepath.Dir(config.Cfg.DBPath), "initial-admin.txt")
@@ -218,11 +218,11 @@ func (a *App) bootstrapDefaultAdmin(ctx context.Context) {
 		logging.LogWarn("users", "could not write initial-admin.txt ("+err.Error()+"); create the admin manually: vayupress user add <email> <password> --admin")
 	}
 
-	logging.LogInfo("users", "════════════════════════════════════════════════════════")
-	logging.LogInfo("users", "Default admin created — sign in at /os/login and change the password")
+	logging.LogInfo("users", "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•")
+	logging.LogInfo("users", "Default admin created â€” sign in at /os/login and change the password")
 	logging.LogInfo("users", "  Email:    "+email)
 	logging.LogInfo("users", "  Password saved to: "+credPath+" (root-only file)")
-	logging.LogInfo("users", "════════════════════════════════════════════════════════")
+	logging.LogInfo("users", "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•")
 }
 
 // generateInitialPassword returns a strong, readable 20-character random password
@@ -283,7 +283,7 @@ func generateSitemap() { writeSitemapScoped(config.Cfg.Domain, "", false, "sitem
 // writeSitemapScoped renders a sitemap for one host into rel. With scoped=false it
 // reproduces the historic global sitemap exactly (no domain filter, primary host).
 // With scoped=true it lists only the given domain's articles (domain_id=scope)
-// under that domain's host — the artefact served on a secondary domain.
+// under that domain's host â€” the artefact served on a secondary domain.
 // sitemapChunk is how many post URLs go in one sitemap file.
 //
 // The protocol caps a single sitemap at 50,000 URLs and 50 MB. Staying under
@@ -312,7 +312,7 @@ func sitemapTagsRel(indexRel string) string {
 //
 // It used to write one file with `LIMIT 50000` and then append every tag page
 // after it. On a site of 234,000 posts that silently omitted four fifths of the
-// content — those URLs were never announced to anything — and the appended tag
+// content â€” those URLs were never announced to anything â€” and the appended tag
 // pages pushed the file past the 50,000-URL cap, which invites a search engine
 // to discard the entire document rather than the overflow. A sitemap that is
 // both truncated and over the limit is worse than none: it looks authoritative
@@ -440,7 +440,7 @@ func sitemapAppendTagPages(sb *strings.Builder, host, scope string, scoped bool)
 }
 
 // generateRSS writes the historic global feed (latest 50 published articles,
-// primary host) to feed.xml — the single-domain / primary artefact, byte-identical
+// primary host) to feed.xml â€” the single-domain / primary artefact, byte-identical
 // to the pre-VayuDomains output. writeRSSScoped produces the per-domain variant.
 func generateRSS() { writeRSSScoped(config.Cfg.Domain, "", false, "feed.xml") }
 
@@ -471,7 +471,7 @@ func writeRSSScoped(host, scope string, scoped bool, rel string) {
 		var linkBuf, guidBuf strings.Builder
 		xml.EscapeText(&linkBuf, []byte(fmt.Sprintf("https://%s/%s", host, slug))) //nolint:errcheck
 		xml.EscapeText(&guidBuf, []byte(fmt.Sprintf("https://%s/%s", host, slug))) //nolint:errcheck
-		// CDATA wraps title/plain — strip any embedded ]]> sequences defensively
+		// CDATA wraps title/plain â€” strip any embedded ]]> sequences defensively
 		safeTitle := strings.ReplaceAll(title, "]]>", "]]]]><![CDATA[>")
 		safePlain := strings.ReplaceAll(plain, "]]>", "]]]]><![CDATA[>")
 		fmt.Fprintf(&items, "<item><title><![CDATA[%s]]></title><link>%s</link><guid isPermaLink=\"true\">%s</guid><pubDate>%s</pubDate><description><![CDATA[%s]]></description></item>",
@@ -490,7 +490,7 @@ func generateRobots() { writeRobotsScoped(config.Cfg.Domain, "robots.txt") }
 func writeRobotsScoped(host, rel string) {
 	// The trailing comment advertises /llms.txt. There is no standard robots.txt
 	// directive for it, and inventing one risks a strict parser rejecting the
-	// file — a comment is ignored by every parser and still found by anyone
+	// file â€” a comment is ignored by every parser and still found by anyone
 	// reading robots.txt to discover what a site offers.
 	render.CacheWrite(rel, fmt.Sprintf("User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\n\nSitemap: https://%s/sitemap.xml\n# LLM index: https://%s/llms.txt\n", host, host)) //nolint:errcheck
 }
@@ -500,7 +500,7 @@ func writeRobotsScoped(host, rel string) {
 // =============================================================================
 
 // secretKEKFilePath returns the host-bound file whose contents wrap the secrets
-// DEK when VAYU_SECRET is not set (audit L6) — so the at-rest key lives outside
+// DEK when VAYU_SECRET is not set (audit L6) â€” so the at-rest key lives outside
 // the database. Override with VAYU_SECRET_KEK_FILE; otherwise it sits beside the
 // database (a stable, service-owned, 0600 location), mirroring the CSRF secret.
 // Empty when no stable location is known (the DEK then falls back to in-DB
@@ -519,8 +519,8 @@ func main() {
 	log.SetFlags(0)
 
 	// obfs4 pluggable-transport mode: tor execs this same binary as its bridge
-	// transport (see VayuTor's managedTor.resolvePT). Handle it FIRST — before any
-	// config/DB/server init — since stdout is the PT protocol channel, and exit.
+	// transport (see VayuTor's managedTor.resolvePT). Handle it FIRST â€” before any
+	// config/DB/server init â€” since stdout is the PT protocol channel, and exit.
 	if len(os.Args) > 1 && os.Args[1] == obfs4Subcommand {
 		runEmbeddedObfs4()
 		os.Exit(0)
@@ -534,7 +534,7 @@ func main() {
 	// in which a core file or a same-user /proc/<pid>/mem read could reach a
 	// session token, the keystore key, decrypted mail or PGP material. Gating it
 	// on a stored setting would mean reading the database first, which is exactly
-	// the window it exists to close — so it is unconditional, and the escape
+	// the window it exists to close â€” so it is unconditional, and the escape
 	// hatch is an environment variable rather than a row in a table.
 	//
 	// VAYU_ALLOW_COREDUMP=1 keeps the process dumpable for an operator who is
@@ -565,7 +565,7 @@ func main() {
 	// This comment used to claim the CLI was the ONLY path and that the web layer
 	// was read-only. That stopped being true when /os/api/update/apply shipped,
 	// and the stale sentence was enough to make a reader doubt that an operator
-	// can update from the panel at all — which is the whole premise of the
+	// can update from the panel at all â€” which is the whole premise of the
 	// product. A comment that describes a constraint the code no longer has is
 	// the same defect as a panel row that overstates what is enforcing.
 	if len(os.Args) > 1 && os.Args[1] == "update" {
@@ -583,14 +583,14 @@ func main() {
 
 	// talk subcommand: record the hostname advertised for the VayuTalk relay.
 	//
-	// Same shape and same reason as `domains` below — a privileged helper needs
+	// Same shape and same reason as `domains` below â€” a privileged helper needs
 	// to record one fact and the unprivileged server cannot obtain a certificate
 	// itself. LoadLocalCLI for the same reason too: this reads and writes local
 	// state and serves nothing, so API_KEY is not its business, and requiring it
 	// is what silently broke provisioning for a week.
 	if len(os.Args) > 1 && os.Args[1] == "talk" {
 		config.LoadLocalCLI()
-		// InitCLI, not Init — see internal/db/cli.go. This runs from the
+		// InitCLI, not Init â€” see internal/db/cli.go. This runs from the
 		// privileged subdomain helper while the server is serving traffic, and
 		// Init is the SERVER's opening sequence: it takes the write lock to
 		// create a table that exists, scans 87 migrations, maps half a gigabyte
@@ -614,8 +614,8 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "domains" {
 		// LoadLocalCLI, not Load: this subcommand reads and writes the local
 		// registry and serves nothing, so API_KEY is not its business. Requiring
-		// it made the privileged provisioning helper — which runs from a systemd
-		// unit that carried no EnvironmentFile — exit fatal before reading a
+		// it made the privileged provisioning helper â€” which runs from a systemd
+		// unit that carried no EnvironmentFile â€” exit fatal before reading a
 		// single row, for a week, silently.
 		config.LoadLocalCLI()
 		// InitCLI for the same reason as `talk` above: this is what the
@@ -647,7 +647,7 @@ func main() {
 
 	// mail subcommand: VayuMail break-glass and recovery inspection (ADR-0144).
 	// Runs WITHOUT starting the server, so it works on a host whose service is
-	// down — which is often the situation that made it necessary.
+	// down â€” which is often the situation that made it necessary.
 	if len(os.Args) > 1 && os.Args[1] == "mail" {
 		config.Load()
 		if err := dbpkg.Init(); err != nil {
@@ -691,12 +691,12 @@ func main() {
 		os.Exit(0)
 	}
 
-	logging.LogInfo("main", fmt.Sprintf("VayuPress v%s starting — P1–P26 active", Version))
+	logging.LogInfo("main", fmt.Sprintf("VayuPress v%s starting â€” P1â€“P26 active", Version))
 	config.Load()
 	logging.LogInfo("main", fmt.Sprintf("domain=%s port=%s workers=%d config_version=%s maintenance=%v",
 		config.Cfg.Domain, config.Cfg.Port, config.Cfg.WorkerCount, config.ConfigVersion, config.Cfg.MaintenanceMode))
 
-	// Initialise App — the single owner of all mutable runtime state (ADR-0046).
+	// Initialise App â€” the single owner of all mutable runtime state (ADR-0046).
 	a := &App{
 		policy:         bluemonday.UGCPolicy(),
 		outboundClient: &http.Client{Timeout: 5 * time.Second, Transport: safeOutboundTransport()},
@@ -712,7 +712,7 @@ func main() {
 	staticDir := config.EnvOr("STATIC_DIR", "/var/www/vayupress/static")
 	// Refresh the admin CSS/JS that ship inside this binary into STATIC_DIR
 	// BEFORE render.Init (which writes the authoritative minified public-site
-	// CSS). This makes a one-click self-update — which replaces only the binary —
+	// CSS). This makes a one-click self-update â€” which replaces only the binary â€”
 	// also update every admin asset, with no separate file-copy step (ADR-0099).
 	syncEmbeddedStatic(staticDir)
 	render.Init(staticDir)
@@ -721,7 +721,7 @@ func main() {
 	os.MkdirAll(docsDir, 0755)
 	// ADRs are shipped as canonical files under docs/adr and synced to the docs
 	// location by the deploy script; the registry reads them straight from disk.
-	// (We no longer write bootstrap stub ADRs here — they produced duplicate ADR
+	// (We no longer write bootstrap stub ADRs here â€” they produced duplicate ADR
 	// numbers alongside the canonical files and polluted the registry.)
 
 	if os.Getenv("VAYU_PLUGINS_ENABLED") == "true" {
@@ -742,29 +742,29 @@ func main() {
 		logging.LogError("main", "DB init failed", err.Error())
 		os.Exit(1)
 	}
-	logging.LogInfo("main", "database ready — WAL adaptive + migrations + checksum drift verified (ADR-0033/0034)")
+	logging.LogInfo("main", "database ready â€” WAL adaptive + migrations + checksum drift verified (ADR-0033/0034)")
 
-	// Governance budget actuation (Ω12) — OFF by default. Only when an operator
+	// Governance budget actuation (Î©12) â€” OFF by default. Only when an operator
 	// explicitly sets GOVERNANCE_ACTUATION=true does an exhausted budget drive an
 	// automatic mode escalation; otherwise budgets remain recommend-only.
 	if config.Cfg.GovernanceActuation {
 		budget.GlobalActuator.SetEnabled(true)
 		logging.LogJSON(logging.LogFields{
 			Level: "warn", Component: "budget-actuator", Severity: "notice",
-			Msg: "governance budget actuation ENABLED — exhausted budgets will drive automatic mode escalation",
+			Msg: "governance budget actuation ENABLED â€” exhausted budgets will drive automatic mode escalation",
 		})
 	} else {
-		logging.LogInfo("budget-actuator", "governance budget actuation disabled (recommend-only) — set GOVERNANCE_ACTUATION=true to enable")
+		logging.LogInfo("budget-actuator", "governance budget actuation disabled (recommend-only) â€” set GOVERNANCE_ACTUATION=true to enable")
 	}
 
-	// Site settings store — warm cache and push initial values into the render pipeline.
+	// Site settings store â€” warm cache and push initial values into the render pipeline.
 	a.siteSettings = settings.New(dbpkg.DB)
 	// API key management (migration 041/042): VayuPress's own rotatable bearer
 	// tokens plus encrypted-at-rest third-party service credentials.
 	//
 	// The credential store uses envelope encryption: a persistent random DEK
 	// (in the secret_keyring table) protects every secret, so rotating the API
-	// key never makes a stored secret undecryptable — rotation is 100%
+	// key never makes a stored secret undecryptable â€” rotation is 100%
 	// automated, with nothing to re-enter. The DEK is, by default, self-managed;
 	// if VAYU_SECRET is set it additionally wraps the DEK for defence-in-depth.
 	// Note this is intentionally NOT config.Cfg.APIKey, which the operator may
@@ -808,7 +808,7 @@ func main() {
 		})
 	}
 
-	// VayuDomains registry (migration 059) — seed the primary domain from the
+	// VayuDomains registry (migration 059) â€” seed the primary domain from the
 	// configured host so an existing single-domain install is described exactly
 	// as it already runs (byte-identical). site_type tracks the live site.mode.
 	a.domains = domain.New(dbpkg.DB, dbpkg.RDB)
@@ -830,7 +830,7 @@ func main() {
 		}
 	}
 
-	// Plugin feature stores — wired after DB is confirmed ready.
+	// Plugin feature stores â€” wired after DB is confirmed ready.
 	a.commentStore = comments.New(dbpkg.DB)
 	a.versionStore = versions.New(dbpkg.DB)
 	a.collectionStore = collections.New(dbpkg.DB)
@@ -845,7 +845,7 @@ func main() {
 	a.previewSigner = preview.New(previewSecret)
 	a.updateStore = update.New(dbpkg.DB)
 
-	// Email delivery (Tier 1) — sovereign SMTP, no-op when unconfigured.
+	// Email delivery (Tier 1) â€” sovereign SMTP, no-op when unconfigured.
 	a.mailer = email.New(email.Config{
 		Host:     config.Cfg.SMTPHost,
 		Port:     config.Cfg.SMTPPort,
@@ -855,21 +855,21 @@ func main() {
 		TLS:      email.TLSMode(config.Cfg.SMTPTLS),
 	})
 	if a.mailer.Enabled() {
-		logging.LogInfo("email", "SMTP delivery configured — host="+config.Cfg.SMTPHost)
+		logging.LogInfo("email", "SMTP delivery configured â€” host="+config.Cfg.SMTPHost)
 	} else {
 		// No external SMTP: fall back to the built-in VayuMail engine so
 		// transactional mail (sign-in links, welcome, newsletter confirmations)
 		// still sends on a sovereign single-binary deployment. The closure reads
 		// a.vayuMail lazily at send time (it is wired later in boot).
 		a.mailer.SetFallback(a.sendViaVayuMail)
-		logging.LogInfo("email", "SMTP not configured — transactional mail will be delivered via the built-in VayuMail engine when DOMAIN is set")
+		logging.LogInfo("email", "SMTP not configured â€” transactional mail will be delivered via the built-in VayuMail engine when DOMAIN is set")
 	}
 
 	// Scheduled publishing (Tier 1).
 	a.scheduler = scheduler.New(dbpkg.DB)
 
 	// Announce the install's world (ADR-0141). Tor/anonymous mode suppresses every
-	// clearnet callback (IndexNow, social auto-post, Cloudflare purge, …) and arms
+	// clearnet callback (IndexNow, social auto-post, Cloudflare purge, â€¦) and arms
 	// the central safefetch egress kill-switch, so EVERY server-side outbound fetch
 	// (webhooks, remote-image import, embed unfurl, and any future caller) fails
 	// closed rather than dialing a clearnet host from the onion server's real IP.
@@ -882,7 +882,7 @@ func main() {
 		// Opt-in: route outbound over Tor instead of blocking (ADR-0143). No-op
 		// unless VAYUTOR_ROUTE_EGRESS + VAYUOS_TOR_SOCKS_ADDR are set; fail-safe.
 		configureTorEgressRouting()
-		logging.LogInfo("vayuos", "VAYUOS_MODE=tor — anonymous Tor Space: clearnet callbacks disabled")
+		logging.LogInfo("vayuos", "VAYUOS_MODE=tor â€” anonymous Tor Space: clearnet callbacks disabled")
 		checks := anonaudit.Run(anonAuditInputs())
 		pass, warn, fail := anonaudit.Summary(checks)
 		logging.LogInfo("anonymity", fmt.Sprintf("Tor Space anonymity self-audit: %d protected, %d to review, %d at risk (see /os/spaces)", pass, warn, fail))
@@ -902,7 +902,7 @@ func main() {
 	// The admin Analytics panel reads run on the DEDICATED admin pool so they are
 	// isolated from public/bot read load. (The only public consumer, the trending
 	// widget, is memoised ~24h and single-flighted, so it borrows this pool at
-	// most once a day — negligible.)
+	// most once a day â€” negligible.)
 	a.analytics.UseReader(dbpkg.AdminReader())
 	// Every host this install answers for, so referrer lists exclude internal
 	// navigation on ALL of them and not only the primary. Without this a hosted
@@ -914,7 +914,7 @@ func main() {
 	// buffer nobody drains is the same defect as a setting nobody reads.
 	a.analytics.StartCollector(context.Background())
 	// Start the /collect batch flusher. Without it every collected beacon is
-	// buffered and never written — same pinned-defect class as above.
+	// buffered and never written â€” same pinned-defect class as above.
 	a.analytics.StartEventCollector(context.Background())
 	// Weekly analytics digest (2025 plan Wave 4): opt-in via VAYU_REPORT_EMAIL;
 	// disabled silently when unset.
@@ -928,11 +928,11 @@ func main() {
 		Token:    config.Cfg.MastodonToken,
 	}, a.outboundClient)
 	if a.social.Enabled() {
-		logging.LogInfo("social", "auto-posting enabled — mastodon="+config.Cfg.MastodonInstance)
+		logging.LogInfo("social", "auto-posting enabled â€” mastodon="+config.Cfg.MastodonInstance)
 	}
 	a.aiAssist = aiassist.New(aiassist.Config{URL: config.Cfg.AIURL, Model: config.Cfg.AIModel}, a.outboundClient)
 	if a.aiAssist.Enabled() {
-		logging.LogInfo("ai", "writing assistant enabled — url="+config.Cfg.AIURL+" model="+a.aiAssist.Model())
+		logging.LogInfo("ai", "writing assistant enabled â€” url="+config.Cfg.AIURL+" model="+a.aiAssist.Model())
 	}
 
 	// Reader memberships & paywalls (Tier 2).
@@ -955,7 +955,7 @@ func main() {
 				}
 				// Entitlement expiry (audit): a paid period that ended with no
 				// renewal must end the entitlement, whatever gateway took the
-				// payment — Stripe webhooks renew themselves, PayPal/direct/
+				// payment â€” Stripe webhooks renew themselves, PayPal/direct/
 				// generic orders never did until this sweep existed. A failed
 				// sweep must be LOUD: silence here hides a paid-entitlement
 				// divergence behind a healthy-looking log.
@@ -1011,12 +1011,12 @@ func main() {
 	// ADMIN read pool. This is the isolation guarantee: even if the public read
 	// pool is fully saturated by a bot flood or a cold-cache render storm, the
 	// admin auth gate draws from its own reserved connections, so VayuOS always
-	// authenticates and loads — the public side can never take the control plane
+	// authenticates and loads â€” the public side can never take the control plane
 	// down with it.
 	a.userStore = users.New(dbpkg.DB)
 	a.userStore.UseReader(dbpkg.AdminReader())
 	// TOTP seeds are second factors: seal them at rest with the service-credential
-	// DEK (VAYU_SECRET / host key file wrapped — audit). Legacy plaintext rows
+	// DEK (VAYU_SECRET / host key file wrapped â€” audit). Legacy plaintext rows
 	// keep verifying and re-seal on their next write.
 	a.userStore.UseTOTPCodec(a.secrets)
 	a.sessions = auth.NewSessionStore(dbpkg.DB)
@@ -1027,7 +1027,7 @@ func main() {
 	// Backfill human-readable author handles for any pre-051 accounts so every
 	// staff member has a /author/<username> URL. Idempotent + cheap.
 	a.userStore.BackfillUsernames(context.Background())
-	// Resolve the article byline's author name → public profile slug + avatar so
+	// Resolve the article byline's author name â†’ public profile slug + avatar so
 	// the byline can link to /author/<slug> with a picture. Cached per name.
 	a.installAuthorResolver()
 	// Periodic expired-session sweep.
@@ -1046,26 +1046,26 @@ func main() {
 		}
 	}()
 
-	// ── VayuOS control layer (Phase 2): Publishing · Mail · PGP ──────────────
+	// â”€â”€ VayuOS control layer (Phase 2): Publishing Â· Mail Â· PGP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	a.bootVayuOS()
 
-	// ── VayuShield + VayuAnalytics Enterprise: bot protection + engagement ───
+	// â”€â”€ VayuShield + VayuAnalytics Enterprise: bot protection + engagement â”€â”€â”€
 	a.bootVayuShield()
 	// Replication last: it depends on the sovereign lane for its pressure signal,
 	// and starting it after the shield means a slow or unreachable backup target
 	// can never delay the site coming up.
 	a.bootVayuKeep(context.Background())
 
-	// Mode journal — durable SQLite-backed transition log (Ω6).
+	// Mode journal â€” durable SQLite-backed transition log (Î©6).
 	dbPath := config.EnvOr("DB_PATH", "./vayupress.db")
 	modeJournalPath := dbPath + ".modes"
 	if modeJournal, past, err := mode.OpenJournal(modeJournalPath, mode.Global); err != nil {
 		logging.LogJSON(logging.LogFields{Level: "warn", Component: "mode", Msg: "mode journal unavailable (non-fatal): " + err.Error()})
 	} else {
-		logging.LogInfo("mode", fmt.Sprintf("mode journal open — %d prior transitions loaded", len(past)))
+		logging.LogInfo("mode", fmt.Sprintf("mode journal open â€” %d prior transitions loaded", len(past)))
 		// Replay the persisted state (audit): a crash in read-only/quarantined
 		// used to reboot into NORMAL and accept writes nobody re-authorised.
-		// Restore seeds silently — no new journal row, no duplicated history.
+		// Restore seeds silently â€” no new journal row, no duplicated history.
 		if len(past) > 0 {
 			last := past[len(past)-1]
 			mode.Global.Restore(last.To)
@@ -1074,7 +1074,7 @@ func main() {
 		defer modeJournal.Close()
 	}
 
-	// Policy journal — persists evaluation runs to SQLite for the provenance inspector.
+	// Policy journal â€” persists evaluation runs to SQLite for the provenance inspector.
 	policy.GlobalJournal = policy.NewJournal(dbpkg.DB)
 	go func() {
 		runPolicyEval := func() {
@@ -1091,7 +1091,7 @@ func main() {
 		}
 	}()
 
-	// Resource governance — limiters and watchdog (ADR-0055).
+	// Resource governance â€” limiters and watchdog (ADR-0055).
 	resource.Register("articles.write", config.Cfg.WorkerCount*4)
 	resource.Register("plugin.exec", config.Cfg.PluginMaxConcurrent)
 	resource.Global = resource.NewWatchdog(250 * time.Millisecond)
@@ -1105,7 +1105,7 @@ func main() {
 		},
 	}
 
-	// Wire VayuFlow — the deterministic automation engine (ADR-0151).
+	// Wire VayuFlow â€” the deterministic automation engine (ADR-0151).
 	//
 	// The content writer is VayuFlow's OWN adapter, not ArticleService: that
 	// service creates articles without setting a status, and an empty status is
@@ -1121,7 +1121,7 @@ func main() {
 	vayuflow.SetModelRunner(flowModel{c: a.aiAssist})
 	vayuflow.SetFetcher(flowFetcher{})
 	vayuflow.SetMailSender(flowMailer{eng: a.vayuMail, from: a.transactionalFrom})
-	// Runs left mid-flight by a previous process become "interrupted" — never
+	// Runs left mid-flight by a previous process become "interrupted" â€” never
 	// retried, because a step that already sent mail must not be replayed.
 	if n, err := a.flowRuns.RecoverInterrupted(context.Background()); err != nil {
 		log.Printf("vayuflow: could not recover in-flight runs: %v", err)
@@ -1136,10 +1136,10 @@ func main() {
 	go a.flowTicker.Run(flowCtx, nil)
 	go a.flowDrainer.Run(flowCtx, 5*time.Second, nil)
 
-	// Wire search service — VayuFind, the built-in dependency-free engine
+	// Wire search service â€” VayuFind, the built-in dependency-free engine
 	// (ADR-0050/0101). Load the index in the BACKGROUND: on a large article store
 	// this full scan can take minutes, and running it synchronously here delayed
-	// the HTTP listener (below) from binding — so the site returned 502 for the
+	// the HTTP listener (below) from binding â€” so the site returned 502 for the
 	// whole load and a slow-but-healthy start looked like a crash. Search returns
 	// empty until the first load completes, then serves normally and is maintained
 	// incrementally by the article event handlers.
@@ -1147,14 +1147,14 @@ func main() {
 	// Load scans every published article, which on a large database takes minutes;
 	// on the writer (SetMaxOpenConns(1)) that scan would monopolise the one writer
 	// connection and block the main startup thread's next write (UPDATE write_jobs
-	// below) — so the listener never bound and the site 502'd. The read pool has
+	// below) â€” so the listener never bound and the site 502'd. The read pool has
 	// several query_only connections, so the scan runs without blocking writes.
 	a.search = search.NewService(dbpkg.Reader())
 	searchIdxPath := filepath.Join(config.Cfg.CacheDir, "search-index.gob")
 	go func() {
 		start := time.Now()
 		// Prefer restoring the persisted index and reconciling only what changed
-		// (incremental) — a full rescan of every article runs only when there is no
+		// (incremental) â€” a full rescan of every article runs only when there is no
 		// usable snapshot (ADR-0110). Either way this is off the startup path.
 		if ok, _ := a.search.LoadIndex(context.Background(), searchIdxPath); ok {
 			logging.LogInfo("search", fmt.Sprintf("search index restored + reconciled (%dms)", time.Since(start).Milliseconds()))
@@ -1167,7 +1167,7 @@ func main() {
 		// The initial Load/reconcile scans published articles into a large,
 		// short-lived working set (the old map, scan buffers, decoded rows). Now
 		// that the live index is in place, hand that transient memory back to the
-		// OS immediately instead of waiting for a later GC to release it lazily —
+		// OS immediately instead of waiting for a later GC to release it lazily â€”
 		// this is the boot-time RSS spike operators saw after a restart. (L4)
 		debug.FreeOSMemory()
 		// Persist now (so the very next start is incremental) and refresh the
@@ -1213,7 +1213,7 @@ func main() {
 	}
 
 	dbpkg.InitStorageCachedBytes()
-	// Background footprint sizing for the Storage & System page — keeps the
+	// Background footprint sizing for the Storage & System page â€” keeps the
 	// multi-GB render-cache tree walk off the request path (Storage page was
 	// blocking for 4-8s per load, inflating the HTTP p95).
 	startFootprintRefresher(config.Cfg.CacheDir, config.Cfg.MediaDir, updateBackupDir())
@@ -1287,7 +1287,7 @@ func main() {
 		logging.LogInfo("cache-warm", "complete")
 	}()
 
-	// Lifecycle manager — ordered startup and shutdown (ADR-0051).
+	// Lifecycle manager â€” ordered startup and shutdown (ADR-0051).
 	lc := lifecycle.New()
 	lc.Register("queue-workers", func(_ context.Context) error {
 		queue.StartWorkerPool(&metrics.WorkerWg)
@@ -1295,7 +1295,7 @@ func main() {
 		return nil
 	}, nil)
 
-	// Outbox relay — dispatches events written atomically with article mutations (ADR-0051/0052/0053).
+	// Outbox relay â€” dispatches events written atomically with article mutations (ADR-0051/0052/0053).
 	outboxRelay := outbox.NewRelay(dbpkg.DB, func(ctx context.Context, _ string, payload []byte) error {
 		var env events.Envelope
 		if err := json.Unmarshal(payload, &env); err != nil {
@@ -1325,7 +1325,7 @@ func main() {
 			// Durably record the trigger for VayuFlow. This is deliberately NOT
 			// a bus subscription: Publish recovers handler panics and returns
 			// nothing, so a subscriber that failed would be invisible and the
-			// outbox would mark this row delivered anyway — durable up to the
+			// outbox would mark this row delivered anyway â€” durable up to the
 			// last link and lossy at it. Returning the error here keeps the row
 			// pending so it is retried.
 			if err := a.flowInboxAppend(ctx, vayuflow.EventArticleCreated, env.EventID,
@@ -1404,7 +1404,7 @@ func main() {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigCh
-		logging.LogInfo("main", fmt.Sprintf("received %v — graceful shutdown", sig))
+		logging.LogInfo("main", fmt.Sprintf("received %v â€” graceful shutdown", sig))
 
 		// Phase 1: stop ingress
 		httpCtx, httpCancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -1412,7 +1412,7 @@ func main() {
 		if err := srv.Shutdown(httpCtx); err != nil {
 			logging.LogError("main", "HTTP shutdown", err.Error())
 		}
-		logging.LogInfo("main", "phase 1 complete — ingress stopped")
+		logging.LogInfo("main", "phase 1 complete â€” ingress stopped")
 
 		// Phase 2: drain write queue (45s)
 		close(queue.DoneCh)
@@ -1420,9 +1420,9 @@ func main() {
 		go func() { metrics.WorkerWg.Wait(); close(drainDone) }()
 		select {
 		case <-drainDone:
-			logging.LogInfo("main", "phase 2 complete — write queue drained")
+			logging.LogInfo("main", "phase 2 complete â€” write queue drained")
 		case <-time.After(45 * time.Second):
-			logging.LogJSON(logging.LogFields{Level: "warn", Component: "main", Msg: "phase 2 timeout (45s) — in-flight jobs retried on next startup"})
+			logging.LogJSON(logging.LogFields{Level: "warn", Component: "main", Msg: "phase 2 timeout (45s) â€” in-flight jobs retried on next startup"})
 		}
 
 		// Phase 3: stop plugin pool + subprocess pools + resource watchdog
@@ -1449,7 +1449,7 @@ func main() {
 		if resource.Global != nil {
 			resource.Global.Stop()
 		}
-		logging.LogInfo("main", "phase 3 complete — plugin pool + watchdog stopped")
+		logging.LogInfo("main", "phase 3 complete â€” plugin pool + watchdog stopped")
 
 		// Phase 4: WAL checkpoint before close
 		if dbpkg.DB != nil {
@@ -1457,31 +1457,31 @@ func main() {
 				logging.LogError("main", "WAL checkpoint on shutdown", err.Error())
 				fault.GlobalEscalator.Record(fault.FaultWALWrite)
 			} else {
-				logging.LogInfo("main", "phase 4 complete — WAL checkpointed")
+				logging.LogInfo("main", "phase 4 complete â€” WAL checkpointed")
 			}
 		}
 
 		// Phase 5: flush final metrics snapshot
 		a.collectAdminMetrics()
-		logging.LogInfo("main", "phase 5 complete — metrics flushed")
+		logging.LogInfo("main", "phase 5 complete â€” metrics flushed")
 
 		// Phase 6: close database
 		if dbpkg.DB != nil {
 			if err := dbpkg.DB.Close(); err != nil {
 				logging.LogError("main", "DB close", err.Error())
 			} else {
-				logging.LogInfo("main", "phase 6 complete — database closed")
+				logging.LogInfo("main", "phase 6 complete â€” database closed")
 			}
 		}
 		// Phase 7: close the WAL read pools. systemd stops the unit after the
-		// process exits, so this is tidy-up rather than necessity — but closing
+		// process exits, so this is tidy-up rather than necessity â€” but closing
 		// the dedicated VayuOS read pool (RDB) and admin read pool (ARDB)
 		// releases their WAL handles in a defined order instead of letting the
 		// process teardown race the checkpoint above.
 		dbpkg.ClosePools()
-		logging.LogInfo("main", "phase 7 complete — read pools closed")
+		logging.LogInfo("main", "phase 7 complete â€” read pools closed")
 
-		logging.LogInfo("main", "shutdown complete — goodbye")
+		logging.LogInfo("main", "shutdown complete â€” goodbye")
 		os.Exit(0)
 	}()
 
@@ -1493,7 +1493,7 @@ func main() {
 		logging.LogError("main", "listen failed", err.Error())
 		os.Exit(1)
 	}
-	// Record what this boot cost, now that the listener is known — the answer
+	// Record what this boot cost, now that the listener is known â€” the answer
 	// differs depending on whether it queues or refuses, and an operator reading
 	// the panel needs the number WITH that context (ADR-0155 P4). After the
 	// service is serving, never before: a diagnostic that can delay a start is
@@ -1502,12 +1502,12 @@ func main() {
 		go recordStartupCost(context.Background(), a.siteSettings, time.Since(bootTime))
 	}
 	// Watch the single write connection for contention. SQLite has one writer, so
-	// anything holding it makes every other writer queue — and until this existed
+	// anything holding it makes every other writer queue â€” and until this existed
 	// there was no way, from inside the product, to see that queue or to know it
 	// had happened. It samples DBStats and takes no connection of its own, which
 	// is what lets it answer during the incident it describes.
 	dbpkg.StartStallWatch(nil)
-	logging.LogInfo("main", fmt.Sprintf("listening on :%s (v%s) — %s", config.Cfg.Port, Version, how))
+	logging.LogInfo("main", fmt.Sprintf("listening on :%s (v%s) â€” %s", config.Cfg.Port, Version, how))
 	if err := srv.Serve(ln); err != http.ErrServerClosed {
 		logging.LogError("main", "Serve error", err.Error())
 		os.Exit(1)

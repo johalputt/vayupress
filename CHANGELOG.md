@@ -6,6 +6,42 @@ Format: [Added / Changed / Deprecated / Fixed / Security / Upgrade Notes / Ethic
 
 ---
 
+## [3.17.64] — 2026-09-08
+
+### Added
+
+- **Update checks that survive a blocked GitHub.** A self-hosted install on a
+  mail-server IP range saw every "Check for updates" click end in
+  `dial tcp 140.82.121.5:443: i/o timeout` — DNS answered, the firewall
+  allowed outbound, and the provider's route to GitHub's edge was simply
+  dead. Nothing on that box could fix it, so the console now fixes it
+  itself, in three automatic layers. The update dialer races every address
+  the resolver offers (IPv6 first, RFC 8305 order) instead of only the
+  first, and — as a last resort — re-resolves GitHub through DNS-over-HTTPS
+  when all of them fail. The checker then falls through a chain: GitHub →
+  the official mirror (`updates.johal.in`, a relay on a different network
+  edge) → a metadata-only CDN listing, and release downloads retry through
+  the mirror the same way. The panel shows a small "via mirror / via CDN"
+  note so an operator can see which path answered, and a transport failure
+  that exhausts the chain becomes a plain-language card that says the
+  install is fine, what to do, and keeps the technical detail underneath.
+- **The official mirror.** `deploy/updates-worker.js` is a Cloudflare Worker
+  that relays GitHub's releases API and streams release files from a network
+  edge reachable even when GitHub is not; `docs/update-mirror.md` documents
+  the one-time, dashboard-only setup. `VAYU_UPDATE_MIRROR` points an install
+  at its own relay or turns the layer off.
+  
+  The mirror is a relay, never a publisher: every byte it serves still passes
+  the release's Sigstore signature and SHA-256 before an install will touch
+  it. A CDN answer can only confirm that a version exists — the apply path
+  refuses such a release with an honest message rather than failing
+  mid-download. The SSRF posture is unchanged: the same private/reserved
+  filter runs per address, the IP is pinned at dial time, Tor spaces never
+  issue clearnet DoH queries, and `VAYU_DNS_FALLBACK=off` disables the DoH
+  layer along with the resolver fallback.
+
+---
+
 ## [3.17.63] — 2026-09-08
 
 ### Fixed

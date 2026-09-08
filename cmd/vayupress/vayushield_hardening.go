@@ -209,27 +209,43 @@ func binaryRepairNotice() string {
 	return ""
 }
 
-// dnsResolverNotice reports that this host's own DNS has stopped answering and
-// the binary is resolving through a public resolver instead, or "" when the
-// system resolver is fine — which is almost always.
+// dnsResolverNotice reports host-network trouble the console would otherwise
+// render invisible: the system DNS resolver stopped answering (lookups are
+// being served by a public resolver), and/or outbound dials are only
+// succeeding through DNS-over-HTTPS re-resolution — the signature of a host
+// whose route to a destination (GitHub's edges are the reported case) is
+// blackholed. "" when neither condition is live.
 //
-// It exists because the failure is otherwise invisible in exactly the way that
-// matters. When the host resolver stops answering, every published-range feed
-// VayuShield relies on silently stops refreshing and the panel goes on
-// presenting the protection as current. A control running on stale data while
-// describing itself as live is the same defect class as a posture verdict that
-// overstates what is enforcing.
+// These exist because the failures are otherwise invisible in exactly the way
+// that matters. When the host resolver stops answering, every published-range
+// feed VayuShield relies on silently stops refreshing and the panel goes on
+// presenting the protection as current. When the route to GitHub is dead, the
+// update panel quietly works around it via the mirror and nothing ever says
+// the host itself is sick. A control running on stale data — or working only
+// through a rescue path — while describing itself as live is the same defect
+// class as a posture verdict that overstates what is enforcing.
 func dnsResolverNotice() string {
-	if !safefetch.DNSFallbackActive() {
-		return ""
-	}
-	return `<div class="settings-callout">
+	var out strings.Builder
+	if safefetch.DNSFallbackActive() {
+		out.WriteString(`<div class="settings-callout">
     <strong>This server's own DNS stopped answering.</strong>
     <span class="text-sm muted">Name lookups are being served by a public resolver so that threat-intelligence
       feeds, verified-bot lists and outbound requests keep working — but the cause is on this machine, not in
       VayuPress, and it will affect anything else here that resolves a name. Set
       <code>VAYU_DNS_FALLBACK=off</code> to refuse the fallback and fail instead.</span>
-  </div>`
+  </div>`)
+	}
+	if n := safefetch.DoHDialCount(); n > 0 {
+		out.WriteString(`<div class="settings-callout">
+    <strong>Some outbound destinations are unreachable directly.</strong>
+    <span class="text-sm muted">` + strconv.FormatInt(n, 10) + ` connection(s) succeeded only after re-resolving the name through a
+      public DNS-over-HTTPS resolver — every address your server's own resolver returned for that destination could not be
+      connected to. This is a route/firewall problem on the host or its provider (GitHub's API edges are the usual case),
+      not a VayuPress fault; updates and other outbound traffic keep working through the mirror fallback. The count
+      resets when this process restarts.</span>
+  </div>`)
+	}
+	return out.String()
 }
 
 // shieldRescueFlag is the file the systemd path unit watches. Repairing the

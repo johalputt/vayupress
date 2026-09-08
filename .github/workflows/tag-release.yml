@@ -124,7 +124,7 @@ jobs:
           # which broke every keyless sign on runners that got v3.1.x. The
           # workflow's flags are written for v2; migrate to v3's signing
           # config deliberately, not via silent installer drift.
-          cosign-release-version: 'v2.6.5'
+          cosign-release: 'v2.6.5'
 
       - name: Sign binary (keyless OIDC)
         if: steps.exists.outputs.skip != 'true'

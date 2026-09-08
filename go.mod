@@ -17,7 +17,7 @@ require (
 	github.com/emersion/go-msgauth v0.7.0
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/graphql-go/graphql v0.8.1
-	github.com/mattn/go-sqlite3 v1.14.50
+	github.com/mattn/go-sqlite3 v1.14.52
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/parquet-go/parquet-go v0.32.0
 	github.com/phuslu/iploc v1.0.20260901

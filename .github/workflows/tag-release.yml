@@ -117,6 +117,14 @@ jobs:
       - name: Install cosign
         if: steps.exists.outputs.skip != 'true'
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          # Pin to the v2 line: cosign v3 treats --timestamp-server-url as a
+          # legacy "service URL" and hard-rejects it whenever a signing config
+          # is in play ("cannot specify service URLs and use signing config"),
+          # which broke every keyless sign on runners that got v3.1.x. The
+          # workflow's flags are written for v2; migrate to v3's signing
+          # config deliberately, not via silent installer drift.
+          cosign-release-version: 'v2.6.5'
 
       - name: Sign binary (keyless OIDC)
         if: steps.exists.outputs.skip != 'true'

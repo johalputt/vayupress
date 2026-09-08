@@ -239,6 +239,15 @@ type TransportOptions struct {
 	AllowHosts []string
 	// DialTimeout overrides the per-connection dial timeout (default 5s).
 	DialTimeout time.Duration
+	// EnableDoH turns on the last-resort DNS-over-HTTPS re-resolution. When
+	// EVERY address the resolver offered fails to connect — the signature of a
+	// provider blackholing one of GitHub's edges — the host is re-resolved
+	// through a public DoH endpoint and those (equally validated) addresses are
+	// raced. It is opt-in per transport: update checks and downloads opt in,
+	// embed/webhook fetches keep the narrower behaviour. Never active in a Tor
+	// Space (the DoH query itself is clearnet) and refused when the operator
+	// set VAYU_DNS_FALLBACK=off.
+	EnableDoH bool
 }
 
 // SafeTransport returns an *http.Transport suitable for an arbitrary-method
@@ -285,15 +294,30 @@ func SafeTransport(opts TransportOptions) *http.Transport {
 		if err != nil {
 			return nil, err
 		}
-		// Dial the first public IP directly so the connection cannot land on a
-		// different (private) address than the one we validated.
-		for _, ipa := range ips {
-			if isPrivateOrReservedIP(ipa.IP) {
-				continue
-			}
-			return base.DialContext(ctx, network, net.JoinHostPort(ipa.IP.String(), port))
+		// Race every public address the resolver offered (Happy-Eyeballs style,
+		// v6 first per RFC 8305) instead of only the first one. A provider or
+		// GitHub edge blackholing ONE address used to fail the whole request —
+		// the reported "dial tcp 140.82.x.x:443: i/o timeout" class.
+		conn, derr := dialRacing(ctx, base, publicIPs(ips), port)
+		if derr == nil {
+			return conn, nil
 		}
-		return nil, fmt.Errorf("%w: host %q has no public address", ErrBlockedAddress, host)
+		// Last resort for opted-in transports (update checks/downloads): the
+		// system resolver's answer may itself be the problem — a stale or
+		// region-poisoned record pinning every lookup to a dead edge. Re-resolve
+		// through a public DoH endpoint and race those addresses through the
+		// same validation. Everything below stays fail-closed: the Tor guard and
+		// the operator's VAYU_DNS_FALLBACK=off both refuse here, and whatever
+		// comes back is still private-range-checked and pinned at dial time.
+		if opts.EnableDoH && dohPermitted() {
+			if alt, lerr := dohLookupIPs(ctx, host); lerr == nil && len(alt) > 0 {
+				if c2, e2 := dialRacing(ctx, base, alt, port); e2 == nil {
+					noteDoHDial(host)
+					return c2, nil
+				}
+			}
+		}
+		return nil, derr
 	}
 	return &http.Transport{
 		Proxy:                 nil, // never honour a proxy for guarded fetches

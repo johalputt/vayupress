@@ -284,6 +284,16 @@
           // Keep the premium chip class; drive its colour via data-state.
           statusEl.className = 'upd-status';
           statusEl.setAttribute('data-state', d.available ? 'available' : 'uptodate');
+          // Which endpoint in the chain answered (github / mirror / cdn). A
+          // non-GitHub source means this server's direct route to GitHub is
+          // unhealthy — the pill makes that visible without alarming anyone.
+          statusEl.setAttribute('data-source', d.source || 'github');
+        }
+        var viaNote = '';
+        if (d.source === 'mirror') {
+          viaNote = ' Checked via the official mirror — this server could not reach GitHub directly this time.';
+        } else if (d.source === 'cdn') {
+          viaNote = ' Checked via the release CDN — this server could not reach GitHub or the mirror. The version is confirmed, but installing it needs a reachable download path.';
         }
         if (notesEl) {
           if (d.notes) {
@@ -296,13 +306,13 @@
           applyBtn.disabled = !(d.canApply && d.available);
         }
         if (!d.available) {
-          setMsg(msgEl, 'You are running the latest release.', false);
+          setMsg(msgEl, 'You are running the latest release.' + viaNote, false);
         } else if (!d.canApply) {
-          setMsg(msgEl, 'Version ' + d.latest + ' is available, but updates are paused while the system mode is ' + (d.mode || 'restricted') + '.', false);
+          setMsg(msgEl, 'Version ' + d.latest + ' is available, but updates are paused while the system mode is ' + (d.mode || 'restricted') + '.' + viaNote, false);
         } else {
           var chan = d.prerelease ? ' pre-release build' : '';
           var verify = d.signed ? 'checksum + signature verified' : 'checksum verified';
-          setMsg(msgEl, 'Version ' + d.latest + chan + ' is ready to install (' + verify + ').', false);
+          setMsg(msgEl, 'Version ' + d.latest + chan + ' is ready to install (' + verify + ').' + viaNote, false);
         }
       })
       .catch(function () { setMsg(msgEl, 'Could not reach the update service — check your connection and try again.', true); })

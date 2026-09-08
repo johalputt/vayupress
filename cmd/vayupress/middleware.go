@@ -47,6 +47,20 @@ func safeOutboundTransport() *http.Transport {
 	return safefetch.SafeTransport(safefetch.TransportOptions{AllowHosts: internalServiceHosts})
 }
 
+// safeUpdateTransport is the update-check/download transport: the same SSRF
+// guard with the resilient dialer enabled. Update traffic is exactly where a
+// host's broken route to GitHub must not become "updates are broken" — the
+// dialer races every address the resolver offers and, as a last resort,
+// re-resolves through DNS-over-HTTPS. The mirror chain in internal/update
+// sits on top of this.
+func safeUpdateTransport() *http.Transport {
+	return safefetch.SafeTransport(safefetch.TransportOptions{
+		AllowHosts:  internalServiceHosts,
+		EnableDoH:   true,
+		DialTimeout: 3 * time.Second,
+	})
+}
+
 // realIPMiddleware normalises r.RemoteAddr to the real client IP using the
 // trusted-proxy-aware resolver (auth.ClientIP). It replaces chi's
 // middleware.RealIP, which trusts X-Forwarded-For / X-Real-IP unconditionally

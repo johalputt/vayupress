@@ -360,12 +360,19 @@ func (a *App) handleOSUpdateCheck(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	includePre := isTruthyParam(r.URL.Query().Get("prerelease"))
-	client := &http.Client{Timeout: 30 * time.Second, Transport: safeOutboundTransport()}
+	client := &http.Client{Timeout: 30 * time.Second, Transport: safeUpdateTransport()}
 	rel, err := update.CheckLatestChannel(r.Context(), client, updateOwner, updateRepo, includePre)
 	if err != nil {
-		// Surface the underlying reason (rate limit, network, etc.) verbatim so the
-		// panel shows something actionable instead of a bare "unable to check".
-		writeAPIError(w, r, http.StatusBadGateway, "check-failed", err.Error(), "")
+		// Surface the underlying reason verbatim so the panel shows something
+		// actionable instead of a bare "unable to check". A transport-level
+		// failure gets the plain-language card first: the operator's questions
+		// are "is my install broken?" (no) and "what do I do?" (nothing, or
+		// retry later) — a raw dial error answers neither.
+		msg := err.Error()
+		if update.IsNetworkErr(err) {
+			msg = update.HumanNetworkCheckMessage(err)
+		}
+		writeAPIError(w, r, http.StatusBadGateway, "check-failed", msg, "")
 		return
 	}
 	available := update.UpdateAvailable(Version, rel.Version)
@@ -393,6 +400,10 @@ func (a *App) handleOSUpdateCheck(w http.ResponseWriter, r *http.Request) {
 		"hasKey":     hasKey,
 		"mode":       string(mode.Global.Current()),
 		"prerelease": includePre,
+		// Which endpoint in the chain answered (github / mirror / cdn) — the
+		// panel shows it as a small pill so an operator whose host cannot reach
+		// GitHub directly can see that checks still work, and why.
+		"source": rel.Source,
 	})
 }
 
@@ -571,7 +582,7 @@ func (a *App) handleOSUpdateApply(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// A generous timeout: release binaries can be large and links slow.
-	client := &http.Client{Timeout: 15 * time.Minute, Transport: safeOutboundTransport()}
+	client := &http.Client{Timeout: 15 * time.Minute, Transport: safeUpdateTransport()}
 	opt := update.ApplyOptions{
 		Current:           Version,
 		DryRun:            body.DryRun,

@@ -92,6 +92,13 @@ func ApplyVerified(ctx context.Context, client *http.Client, owner, repo string,
 	if !UpdateAvailable(opt.Current, rel.Version) {
 		return "", fmt.Errorf("update: no newer release available (current=%s latest=%s)", opt.Current, rel.Version)
 	}
+	// The CDN fallback can only prove that a newer version EXISTS — it cannot
+	// serve the release files. Refuse here with the honest path forward rather
+	// than failing mid-download with a confusing "no binary asset" error.
+	if rel.CheckOnly {
+		return "", fmt.Errorf("update: %s is available, but this server cannot reach GitHub's download servers or the official mirror to fetch it. "+
+			"This is the host's outbound network, not a broken install — retry later, or from a network that can reach GitHub", rel.Version)
+	}
 
 	// VERIFICATION POLICY (Section 5 audit).
 	//
@@ -150,7 +157,7 @@ func ApplyVerified(ctx context.Context, client *http.Client, owner, repo string,
 		}
 	}
 
-	binData, err := download(ctx, client, binAsset.DownloadURL)
+	binData, err := downloadSourced(ctx, client, binAsset.DownloadURL)
 	if err != nil {
 		return "", fmt.Errorf("update: download binary: %w", err)
 	}
@@ -166,7 +173,7 @@ func ApplyVerified(ctx context.Context, client *http.Client, owner, repo string,
 			"Retry; if it persists, make sure the server can reach github.com and its release-download hosts "+
 			"(release-assets.githubusercontent.com, objects.githubusercontent.com) outbound", why)
 	}
-	sumData, err := download(ctx, client, sumAsset.DownloadURL)
+	sumData, err := downloadSourced(ctx, client, sumAsset.DownloadURL)
 	if err != nil {
 		return "", fmt.Errorf("update: download checksum: %w", err)
 	}
@@ -182,13 +189,13 @@ func ApplyVerified(ctx context.Context, client *http.Client, owner, repo string,
 
 	// THE AUTHENTICITY CHECK. Everything above proves the bytes arrived intact;
 	// only this proves who made them.
-	bundleData, err := download(ctx, client, bundleAsset.DownloadURL)
+	bundleData, err := downloadSourced(ctx, client, bundleAsset.DownloadURL)
 	if err != nil {
 		return "", fmt.Errorf("update: download release signature: %w", err)
 	}
 	sigHex := ""
 	if sigAsset != nil {
-		sigData, derr := download(ctx, client, sigAsset.DownloadURL)
+		sigData, derr := downloadSourced(ctx, client, sigAsset.DownloadURL)
 		if derr != nil {
 			return "", fmt.Errorf("update: download release key signature: %w", derr)
 		}

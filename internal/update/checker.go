@@ -24,6 +24,16 @@ type Release struct {
 	URL       string // html_url
 	Assets    []Asset
 	Published time.Time
+	// Source records which endpoint in the chain answered: SourceGitHub,
+	// SourceMirror, or SourceCDN. Surfaced in the console so an operator can
+	// see that their host's direct route to GitHub is unhealthy without having
+	// to read a log.
+	Source string
+	// CheckOnly marks a Release whose metadata came from a source that cannot
+	// serve the release FILES (the CDN fallback lists tags only). The apply
+	// path refuses these with an honest message instead of a confusing
+	// mid-download failure.
+	CheckOnly bool
 }
 
 // Asset is a downloadable artifact attached to a release.
@@ -67,22 +77,41 @@ func CheckLatest(ctx context.Context, client *http.Client, owner, repo string) (
 	latestURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repo)
 	rel, err := getRelease(ctx, client, latestURL)
 	if err == nil {
+		rel.Source = SourceGitHub
 		return rel, nil
 	}
-	// Rate-limit errors are terminal — listing would hit the same wall.
+	// Rate-limit errors are terminal — every other endpoint hits the same wall.
 	if errors.Is(err, errRateLimited) {
 		return nil, err
 	}
-	// Fall back to the releases list (handles a 404 from `latest`).
-	rel2, err2 := latestFromList(ctx, client, owner, repo)
-	if err2 != nil {
-		// Surface the more informative of the two errors.
-		if errors.Is(err2, errRateLimited) {
-			return nil, err2
+	// GitHub ANSWERED (404 from `latest`, e.g. newest release is a pre-release):
+	// the network is fine, so the existing list fallback is the right next step
+	// and the mirror adds nothing but latency.
+	if !IsNetworkErr(err) {
+		rel2, err2 := latestFromList(ctx, client, owner, repo)
+		if err2 != nil {
+			if errors.Is(err2, errRateLimited) {
+				return nil, err2
+			}
+			return nil, err
 		}
-		return nil, err
+		rel2.Source = SourceGitHub
+		return rel2, nil
 	}
-	return rel2, nil
+	// GitHub is unreachable at the transport level. Fall through the chain:
+	// the official mirror (full fidelity — same API JSON, files included),
+	// then a metadata-only CDN listing. See endpoints.go for the guarantees.
+	if mb := mirrorBase(); mb != "" {
+		if rel2, merr := mirrorLatest(ctx, client, mb, owner, repo); merr == nil {
+			return rel2, nil
+		}
+	}
+	if rel3, jerr := jsdelivrLatest(ctx, client, owner, repo, false); jerr == nil {
+		return rel3, nil
+	}
+	// Every layer failed: surface the original network error verbatim so the
+	// console can classify it for the operator.
+	return nil, err
 }
 
 // CheckLatestChannel is CheckLatest with an explicit release channel. When
@@ -98,7 +127,26 @@ func CheckLatestChannel(ctx context.Context, client *http.Client, owner, repo st
 	if client == nil {
 		return nil, fmt.Errorf("update: nil http client")
 	}
-	return latestFromListChannel(ctx, client, owner, repo, true)
+	rel, err := latestFromListChannel(ctx, client, owner, repo, true)
+	if err == nil {
+		rel.Source = SourceGitHub
+		return rel, nil
+	}
+	if errors.Is(err, errRateLimited) {
+		return nil, err
+	}
+	if IsNetworkErr(err) {
+		// Same chain as the stable channel: mirror first, CDN last.
+		if mb := mirrorBase(); mb != "" {
+			if rel2, merr := mirrorReleasesList(ctx, client, mb, owner, repo, true); merr == nil {
+				return rel2, nil
+			}
+		}
+		if rel3, jerr := jsdelivrLatest(ctx, client, owner, repo, true); jerr == nil {
+			return rel3, nil
+		}
+	}
+	return nil, err
 }
 
 // errRateLimited marks a GitHub rate-limit (403/429) so callers can stop early.
@@ -163,7 +211,13 @@ func latestFromList(ctx context.Context, client *http.Client, owner, repo string
 // newest-first, so on a semver tie the more recently published build wins.
 func latestFromListChannel(ctx context.Context, client *http.Client, owner, repo string, includePrerelease bool) (*Release, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?per_page=30", owner, repo)
-	resp, err := githubGet(ctx, client, url)
+	return latestFromListURL(ctx, client, url, includePrerelease)
+}
+
+// latestFromListURL is the list decode+pick shared by the GitHub endpoint and
+// the mirror's relay of the same list.
+func latestFromListURL(ctx context.Context, client *http.Client, listURL string, includePrerelease bool) (*Release, error) {
+	resp, err := githubGet(ctx, client, listURL)
 	if err != nil {
 		return nil, err
 	}
